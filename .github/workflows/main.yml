@@ -1,17 +1,17 @@
-name: Advanced DevSecOps Pipeline
+name: Ultimate DevSecOps Pipeline
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build-test-scan-push:
+  build-scan-deploy-notify:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Code
+    - name: 📥 Checkout Code
       uses: actions/checkout@v3
 
-    - name: 🧪 Test Code (Testing Phase)
+    - name: 🧪 Code Quality & Structure Test
       run: |
         if [ -f "index.html" ]; then
           echo "✅ HTML file is present. Test Passed!"
@@ -22,7 +22,7 @@ jobs:
     - name: 🐳 Build Docker Image
       run: docker build -t ${{ secrets.DOCKER_USERNAME }}/my-devops-app:latest .
 
-    - name: 🛡️ Security Scan using Trivy
+    - name: 🛡️ Security Vulnerability Scan (Trivy)
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: '${{ secrets.DOCKER_USERNAME }}/my-devops-app:latest'
@@ -39,3 +39,15 @@ jobs:
 
     - name: 🚀 Push Secure Image to Docker Hub
       run: docker push ${{ secrets.DOCKER_USERNAME }}/my-devops-app:latest
+
+    - name: 📱 Send Telegram Alert on Success
+      if: success()
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_TO }}
+        token: ${{ secrets.TELEGRAM_TOKEN }}
+        message: |
+          🎉 Major Project Update!
+          ✅ Code Passed Security Scan!
+          🐳 Docker Image Built & Pushed!
+          🚀 Ready for Deployment on Render.
