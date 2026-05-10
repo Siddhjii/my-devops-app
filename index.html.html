@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Computer Anudeshak — 100 दिन की तैयारी</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;transition:background 0.3s;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:rgba(99,102,241,.4);border-radius:99px;}
+button{font-family:inherit;cursor:pointer;}
+input,textarea{font-family:inherit;}
+textarea{resize:vertical;}
+.ring-container{position:relative;flex-shrink:0;}
+.ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-box{border-radius:22px;padding:24px;width:100%;max-width:460px;box-shadow:0 24px 64px rgba(0,0,0,0.4);max-height:90vh;overflow-y:auto;}
+.confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9999;}
+.celebration-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:500;pointer-events:none;}
+.sticky-header{position:sticky;top:0;z-index:40;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}
+.tab-btn{flex:1;padding:8px 4px;border-radius:11px;border:none;font-size:clamp(9px,1.5vw,12px);font-weight:700;transition:all .2s;}
+.day-grid-btn{width:30px;height:30px;border-radius:7px;border:none;font-weight:700;font-size:10px;transition:all .15s;}
+@media(max-width:480px){.tab-label-long{display:none;}.tab-label-short{display:inline;}}
+@media(min-width:481px){.tab-label-short{display:none;}}
+.progress-bar-inner{height:100%;border-radius:99px;transition:width .6s;}
+.opt-btn{display:flex;align-items:flex-start;gap:8px;padding:8px 11px;border-radius:9px;font-weight:600;font-size:12px;text-align:left;transition:all .15s;width:100%;}
+</style>
+</head>
+<body>
+<canvas id="confettiCanvas" class="confetti-canvas" style="display:none;"></canvas>
+<div id="celebrationOverlay" class="celebration-overlay" style="display:none;"></div>
+<div id="modalContainer"></div>
+<div id="app"></div>
+
+<script>
+// ════════════════════════════════════════════
+// DATA & CONSTANTS
+// ════════════════════════════════════════════
+const APP_NAME = "Computer Anudeshak";
+const APP_SUB = "100 दिन की तैयारी — Rajasthan Anudeshak Exam 🎯";
+
+const QUOTES = [
+  {en:"Small steps every day build unstoppable momentum.",hi:"रोज़ के छोटे क़दम ही बड़ी मंज़िल तय करते हैं।"},
+  {en:"Consistency beats motivation every single time.",hi:"निरंतरता, प्रेरणा से हमेशा आगे रहती है।"},
+  {en:"Dreams demand discipline.",hi:"सपने अनुशासन माँगते हैं।"},
+  {en:"The grind today becomes the glory tomorrow.",hi:"आज की कड़ी मेहनत कल की शान बनती है।"},
+  {en:"Knowledge is power.",hi:"ज्ञान ही शक्ति है।"},
+  {en:"One day or day one — you decide.",hi:"एक दिन या पहला दिन — फैसला तुम्हारा है।"},
+  {en:"Don't stop when you're tired; stop when you're done.",hi:"थकने पर नहीं, काम पूरा होने पर रुको।"},
+];
+
+const DOODLE_AVATARS = [
+  { id:"owl", label:"🦉 Wise Owl", bg:"#6366F1", svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="38" fill="#818CF8"/><ellipse cx="30" cy="38" rx="11" ry="13" fill="white"/><ellipse cx="50" cy="38" rx="11" ry="13" fill="white"/><circle cx="30" cy="38" r="7" fill="#1e1b4b"/><circle cx="50" cy="38" r="7" fill="#1e1b4b"/><circle cx="32" cy="36" r="2.5" fill="white"/><circle cx="52" cy="36" r="2.5" fill="white"/><ellipse cx="40" cy="52" rx="14" ry="10" fill="#c7d2fe"/><path d="M34 52 Q40 58 46 52" stroke="#6366F1" stroke-width="2" fill="none"/><polygon points="36,22 40,16 44,22" fill="#f59e0b"/><polygon points="26,20 30,14 34,20" fill="#f59e0b"/><polygon points="46,20 50,14 54,20" fill="#f59e0b"/></svg>` },
+  { id:"cat", label:"🐱 Studious Cat", bg:"#EC4899", svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="45" r="30" fill="#f9a8d4"/><ellipse cx="40" cy="45" rx="22" ry="20" fill="#fce7f3"/><polygon points="20,20 28,35 12,35" fill="#f9a8d4"/><polygon points="60,20 68,35 52,35" fill="#f9a8d4"/><ellipse cx="32" cy="44" rx="6" ry="7" fill="white"/><ellipse cx="48" cy="44" rx="6" ry="7" fill="white"/><ellipse cx="32" cy="45" rx="3" ry="5" fill="#1e1b4b"/><ellipse cx="48" cy="45" rx="3" ry="5" fill="#1e1b4b"/><circle cx="33" cy="43" r="1.5" fill="white"/><circle cx="49" cy="43" r="1.5" fill="white"/><ellipse cx="40" cy="53" rx="5" ry="3" fill="#f472b6"/><path d="M35 53 Q40 57 45 53" stroke="#db2777" stroke-width="1.5" fill="none"/><line x1="20" y1="50" x2="10" y2="47" stroke="#9d174d" stroke-width="1.5"/><line x1="20" y1="53" x2="9" y2="53" stroke="#9d174d" stroke-width="1.5"/><line x1="60" y1="50" x2="70" y2="47" stroke="#9d174d" stroke-width="1.5"/><line x1="60" y1="53" x2="71" y2="53" stroke="#9d174d" stroke-width="1.5"/></svg>` },
+  { id:"robot", label:"🤖 Smart Robot", bg:"#06B6D4", svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="28" width="40" height="36" rx="8" fill="#67e8f9"/><rect x="26" y="34" width="12" height="10" rx="3" fill="white"/><rect x="42" y="34" width="12" height="10" rx="3" fill="white"/><circle cx="32" cy="39" r="4" fill="#0891b2"/><circle cx="48" cy="39" r="4" fill="#0891b2"/><circle cx="33" cy="38" r="1.5" fill="white"/><circle cx="49" cy="38" r="1.5" fill="white"/><rect x="28" y="50" width="24" height="6" rx="3" fill="white"/><rect x="30" y="52" width="4" height="2" rx="1" fill="#0891b2"/><rect x="36" y="52" width="4" height="2" rx="1" fill="#0891b2"/><rect x="42" y="52" width="4" height="2" rx="1" fill="#22c55e"/><rect x="35" y="16" width="10" height="14" rx="3" fill="#67e8f9"/><circle cx="40" cy="14" r="5" fill="#f59e0b"/><rect x="10" y="38" width="12" height="6" rx="3" fill="#67e8f9"/><rect x="58" y="38" width="12" height="6" rx="3" fill="#67e8f9"/></svg>` },
+  { id:"fox", label:"🦊 Clever Fox", bg:"#F97316", svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="44" r="28" fill="#fb923c"/><ellipse cx="40" cy="50" rx="18" ry="15" fill="#fed7aa"/><polygon points="22,22 32,38 12,32" fill="#fb923c"/><polygon points="58,22 68,32 48,38" fill="#fb923c"/><polygon points="24,24 30,36 16,36" fill="white"/><polygon points="56,24 64,36 50,36" fill="white"/><ellipse cx="33" cy="46" rx="5" ry="6" fill="white"/><ellipse cx="47" cy="46" rx="5" ry="6" fill="white"/><circle cx="33" cy="47" r="3" fill="#1c1917"/><circle cx="47" cy="47" r="3" fill="#1c1917"/><circle cx="34" cy="46" r="1" fill="white"/><circle cx="48" cy="46" r="1" fill="white"/><ellipse cx="40" cy="55" rx="5" ry="3.5" fill="#c2410c"/><path d="M35 55 Q40 59 45 55" stroke="#9a3412" stroke-width="1.5" fill="none"/></svg>` },
+  { id:"panda", label:"🐼 Chill Panda", bg:"#22C55E", svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="44" r="28" fill="white"/><circle cx="26" cy="34" r="10" fill="#1c1917"/><circle cx="54" cy="34" r="10" fill="#1c1917"/><circle cx="28" cy="36" r="6" fill="white"/><circle cx="52" cy="36" r="6" fill="white"/><circle cx="28" cy="37" r="3.5" fill="#1c1917"/><circle cx="52" cy="37" r="3.5" fill="#1c1917"/><circle cx="29" cy="36" r="1.5" fill="white"/><circle cx="53" cy="36" r="1.5" fill="white"/><ellipse cx="40" cy="52" rx="10" ry="8" fill="#f3f4f6"/><ellipse cx="40" cy="52" rx="5" ry="3" fill="#d1fae5"/><path d="M35 54 Q40 58 45 54" stroke="#166534" stroke-width="2" fill="none"/><ellipse cx="40" cy="26" rx="12" ry="8" fill="white"/></svg>` },
+  { id:"bear", label:"🐻 Study Bear", bg:"#F59E0B", svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="44" r="27" fill="#d97706"/><circle cx="25" cy="28" r="10" fill="#d97706"/><circle cx="55" cy="28" r="10" fill="#d97706"/><circle cx="25" cy="28" r="6" fill="#fbbf24"/><circle cx="55" cy="28" r="6" fill="#fbbf24"/><ellipse cx="40" cy="50" rx="20" ry="18" fill="#fbbf24"/><ellipse cx="33" cy="43" rx="5" ry="5.5" fill="white"/><ellipse cx="47" cy="43" rx="5" ry="5.5" fill="white"/><circle cx="33" cy="44" r="3" fill="#292524"/><circle cx="47" cy="44" r="3" fill="#292524"/><circle cx="34" cy="43" r="1.2" fill="white"/><circle cx="48" cy="43" r="1.2" fill="white"/><ellipse cx="40" cy="52" rx="7" ry="5" fill="#b45309"/><path d="M35 54 Q40 57 45 54" stroke="#78350f" stroke-width="2" fill="none"/><ellipse cx="40" cy="38" rx="8" ry="4" fill="#d97706"/></svg>` },
+  { id:"penguin", label:"🐧 Cool Penguin", bg:"#8B5CF6", svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><ellipse cx="40" cy="46" rx="24" ry="28" fill="#1c1917"/><ellipse cx="40" cy="50" rx="16" ry="20" fill="white"/><circle cx="40" cy="28" r="16" fill="#1c1917"/><circle cx="33" cy="26" r="5" fill="white"/><circle cx="47" cy="26" r="5" fill="white"/><circle cx="33" cy="27" r="3" fill="#1c1917"/><circle cx="47" cy="27" r="3" fill="#1c1917"/><circle cx="34" cy="26" r="1.2" fill="white"/><circle cx="48" cy="26" r="1.2" fill="white"/><ellipse cx="40" cy="33" rx="5" ry="3" fill="#f59e0b"/><path d="M37 35 Q40 38 43 35" stroke="#d97706" stroke-width="1.5" fill="none"/><ellipse cx="22" cy="52" rx="7" ry="4" fill="#1c1917" transform="rotate(-30 22 52)"/><ellipse cx="58" cy="52" rx="7" ry="4" fill="#1c1917" transform="rotate(30 58 52)"/></svg>` },
+  { id:"bunny", label:"🐰 Quick Bunny", bg:"#F43F5E", svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="48" r="24" fill="#fce7f3"/><ellipse cx="30" cy="22" rx="8" ry="18" fill="#fce7f3"/><ellipse cx="50" cy="22" rx="8" ry="18" fill="#fce7f3"/><ellipse cx="30" cy="22" rx="4" ry="14" fill="#f9a8d4"/><ellipse cx="50" cy="22" rx="4" ry="14" fill="#f9a8d4"/><ellipse cx="33" cy="46" rx="5" ry="6" fill="white"/><ellipse cx="47" cy="46" rx="5" ry="6" fill="white"/><circle cx="33" cy="47" r="3.5" fill="#831843"/><circle cx="47" cy="47" r="3.5" fill="#831843"/><circle cx="34" cy="46" r="1.5" fill="white"/><circle cx="48" cy="46" r="1.5" fill="white"/><ellipse cx="40" cy="54" rx="5" ry="3" fill="#f472b6"/><path d="M36 55 Q40 58 44 55" stroke="#db2777" stroke-width="1.5" fill="none"/><line x1="24" y1="52" x2="14" y2="49" stroke="#f9a8d4" stroke-width="1.5"/><line x1="24" y1="55" x2="13" y2="55" stroke="#f9a8d4" stroke-width="1.5"/><line x1="56" y1="52" x2="66" y2="49" stroke="#f9a8d4" stroke-width="1.5"/><line x1="56" y1="55" x2="67" y2="55" stroke="#f9a8d4" stroke-width="1.5"/></svg>` },
+];
+
+const TAG_COLORS = {"📌 Important":"#6366F1","🔴 Urgent":"#EF4444","🟢 Done":"#22C55E","💡 Idea":"#F59E0B","📖 Formula":"#06B6D4","🎯 Exam Tip":"#8B5CF6"};
+const EMOJI_LIST = ["📚","🧠","💻","📊","⌨️","🌐","🔒","🗄️","📐","📡","🎓","🔬","📝","🎯","⚙️","🌲","🔢","✏️","🏆","💡","🗺️","📖","🔑","🎨","🧮","📜","🌍","🔭","🎵","💼"];
+const COLOR_LIST = ["#6366F1","#22C55E","#F59E0B","#EC4899","#06B6D4","#8B5CF6","#F97316","#14B8A6","#EF4444","#84CC16","#A78BFA","#FB923C","#10B981","#3B82F6","#F43F5E","#FBBF24"];
+
+// ════ DAY CONTENT (key days with full content) ════
+const DAY_CONTENT = {
+  1: {
+    overview: "Computer एक electronic device है जो data को process करता है। Input devices (keyboard, mouse, scanner) data देते हैं और Output devices (monitor, printer, speaker) result दिखाते हैं। Computer मुख्यतः 5 प्रकार के होते हैं: Supercomputer, Mainframe, Mini, Micro, और Embedded। Anudeshak exam में computer basics से 4-5 MCQ ज़रूर आते हैं।",
+    keyPoints: ["Computer = Input + Process + Output + Storage","Mouse, Keyboard, Scanner → Input Devices","Monitor, Printer, Speaker → Output Devices","5 Types: Super > Mainframe > Mini > Micro > Embedded","CPU = Brain of Computer (ALU + CU + MU)","ENIAC = World's First Electronic Computer (1945)"],
+    examTip: "⭐ Input/Output devices की list याद करो — exam में directly पूछा जाता है। Mouse एक Pointing Device है।",
+    pyqs: [
+      {q:"CPU का पूरा नाम क्या है?",opts:["A) Central Processing Unit","B) Computer Processing Unit","C) Central Program Unit","D) Control Processing Unit"],ans:"A",exp:"CPU = Central Processing Unit — यह computer का 'brain' है।"},
+      {q:"निम्न में से कौन Input Device है?",opts:["A) Monitor","B) Printer","C) Scanner","D) Speaker"],ans:"C",exp:"Scanner एक input device है जो document को digital format में convert करता है।"},
+      {q:"विश्व का पहला Electronic Computer कौन सा था?",opts:["A) UNIVAC","B) ENIAC","C) IBM 360","D) EDVAC"],ans:"B",exp:"ENIAC (1945) — Electronic Numerical Integrator and Computer — पहला electronic computer था।"},
+      {q:"निम्न में से कौन Output Device नहीं है?",opts:["A) Monitor","B) Printer","C) Keyboard","D) Plotter"],ans:"C",exp:"Keyboard एक Input Device है, Output Device नहीं।"},
+      {q:"Supercomputer का उपयोग किसमें होता है?",opts:["A) Weather Forecasting","B) Word Processing","C) Gaming","D) Web Browsing"],ans:"A",exp:"Supercomputer का उपयोग Weather Forecasting, Nuclear Research, Scientific Simulations में होता है।"},
+      {q:"ALU का पूरा नाम है?",opts:["A) Arithmetic Logic Unit","B) Automatic Logic Unit","C) Arithmetic Language Unit","D) Array Logic Unit"],ans:"A",exp:"ALU = Arithmetic Logic Unit — यह mathematical और logical operations करता है।"},
+      {q:"Mouse किस प्रकार की Device है?",opts:["A) Output","B) Storage","C) Input - Pointing","D) Processing"],ans:"C",exp:"Mouse एक Input Pointing Device है।"},
+      {q:"Mainframe computer का उपयोग कहाँ होता है?",opts:["A) घर में","B) Banks और Large Organizations में","C) Schools में","D) Shops में"],ans:"B",exp:"Mainframe computers का उपयोग Banks, Airlines, और Large Corporations में होता है।"},
+      {q:"Personal Computer किस category में आता है?",opts:["A) Supercomputer","B) Mainframe","C) Minicomputer","D) Microcomputer"],ans:"D",exp:"PC (Personal Computer) Microcomputer category में आता है।"},
+      {q:"Computer की Speed किसमें मापी जाती है?",opts:["A) Volt","B) MIPS (Million Instructions Per Second)","C) Bytes","D) Hertz only"],ans:"B",exp:"Computer की processing speed MIPS (Million Instructions Per Second) में मापी जाती है।"},
+      {q:"Keyboard किस प्रकार की device है?",opts:["A) Output","B) Input","C) Storage","D) Processing"],ans:"B",exp:"Keyboard एक Input Device है।"},
+      {q:"निम्न में से Embedded Computer का उदाहरण कौन सा है?",opts:["A) Desktop PC","B) Laptop","C) Microwave Oven Controller","D) Server"],ans:"C",exp:"Microwave Oven, Washing Machine — इनमें Embedded computers होते हैं।"},
+      {q:"Monitor किस प्रकार की device है?",opts:["A) Input","B) Output","C) Storage","D) Processing"],ans:"B",exp:"Monitor एक Output Device है जो visual information display करता है।"},
+      {q:"CPU के कितने मुख्य भाग होते हैं?",opts:["A) 2","B) 3","C) 4","D) 5"],ans:"B",exp:"CPU के 3 मुख्य भाग: ALU, Control Unit, और Memory Unit।"},
+      {q:"Plotter का उपयोग किसलिए होता है?",opts:["A) Text print करने के लिए","B) Large diagrams/drawings print करने के लिए","C) Photo print करने के लिए","D) Audio output के लिए"],ans:"B",exp:"Plotter का उपयोग Engineering drawings, Large charts, और Maps print करने के लिए होता है।"},
+      {q:"UNIVAC क्या था?",opts:["A) पहला Electronic Computer","B) पहला Commercial Computer","C) पहला Personal Computer","D) पहला Laptop"],ans:"B",exp:"UNIVAC (1951) — Universal Automatic Computer — पहला commercial computer था।"},
+      {q:"Control Unit का क्या काम है?",opts:["A) Calculation करना","B) Data store करना","C) Operations को direct और coordinate करना","D) Output देना"],ans:"C",exp:"Control Unit computer के सभी operations को coordinate और control करता है।"},
+      {q:"Speaker किस प्रकार की device है?",opts:["A) Input","B) Output - Audio","C) Storage","D) Processing"],ans:"B",exp:"Speaker एक Output device है जो audio output देता है।"},
+      {q:"Mini Computer का उदाहरण कौन सा है?",opts:["A) IBM PC","B) DEC PDP-11","C) CRAY-1","D) IBM 3090"],ans:"B",exp:"DEC PDP-11 एक minicomputer का classic example है।"},
+      {q:"Barcode Reader किस प्रकार की device है?",opts:["A) Output","B) Processing","C) Input","D) Storage"],ans:"C",exp:"Barcode Reader एक Input device है जो barcode को read करता है।"},
+    ]
+  },
+  2: {
+    overview: "Data Representation में computer सभी data को Binary (0 और 1) में store करता है। Digital signals discrete values (0/1) में होते हैं जबकि Analog signals continuous होते हैं। Number systems में Decimal (base-10), Binary (base-2), Octal (base-8), और Hexadecimal (base-16) शामिल हैं। Exam में conversion और representation के सवाल आते हैं।",
+    keyPoints: ["Computer सिर्फ Binary (0,1) समझता है","Digital = Discrete Values, Analog = Continuous","Decimal → Base 10 (0-9 digits)","Binary → Base 2 (0,1 digits)","Octal → Base 8 (0-7 digits)","Hex → Base 16 (0-9, A-F)"],
+    examTip: "⭐ Binary में 1 Byte = 8 Bits याद रखो। Digital computers binary use करते हैं। Decimal 10 = Binary 1010",
+    pyqs: [
+      {q:"1 Byte में कितने Bits होते हैं?",opts:["A) 4","B) 8","C) 16","D) 32"],ans:"B",exp:"1 Byte = 8 Bits — यह एक fundamental concept है।"},
+      {q:"Binary Number System का base क्या है?",opts:["A) 2","B) 8","C) 10","D) 16"],ans:"A",exp:"Binary number system का base (radix) 2 है और इसमें केवल 0 और 1 digits होते हैं।"},
+      {q:"Decimal 10 का Binary equivalent क्या है?",opts:["A) 1001","B) 1010","C) 1100","D) 0101"],ans:"B",exp:"10 ÷ 2 = 5 rem 0, 5÷2=2 rem 1, 2÷2=1 rem 0, 1÷2=0 rem 1 → 1010"},
+      {q:"Hexadecimal में 'A' का decimal value क्या है?",opts:["A) 10","B) 11","C) 12","D) 9"],ans:"A",exp:"Hexadecimal: A=10, B=11, C=12, D=13, E=14, F=15"},
+      {q:"Digital Signal की विशेषता क्या है?",opts:["A) Continuous values","B) Discrete values (0 और 1)","C) Analog nature","D) इनमें से कोई नहीं"],ans:"B",exp:"Digital signals discrete (0 और 1) values में होते हैं, continuous नहीं।"},
+      {q:"Octal Number System का base क्या है?",opts:["A) 2","B) 8","C) 10","D) 16"],ans:"B",exp:"Octal number system का base 8 है और digits 0 से 7 तक होते हैं।"},
+      {q:"1 Kilobyte (KB) = कितने Bytes?",opts:["A) 100 Bytes","B) 512 Bytes","C) 1024 Bytes","D) 2048 Bytes"],ans:"C",exp:"1 KB = 1024 Bytes (2^10 = 1024)"},
+      {q:"Binary 1111 का Decimal value क्या है?",opts:["A) 13","B) 14","C) 15","D) 16"],ans:"C",exp:"1111 = 8+4+2+1 = 15"},
+      {q:"Analog Signal का उदाहरण कौन सा है?",opts:["A) Computer Data","B) Digital Clock","C) Sound Waves","D) Binary Code"],ans:"C",exp:"Sound waves, temperature, voltage — ये analog signals हैं जो continuous होते हैं।"},
+      {q:"Hexadecimal system में कितने digits होते हैं?",opts:["A) 8","B) 10","C) 16","D) 12"],ans:"C",exp:"Hexadecimal में 16 symbols: 0-9 और A,B,C,D,E,F"},
+      {q:"1 Nibble में कितने bits होते हैं?",opts:["A) 2","B) 4","C) 8","D) 16"],ans:"B",exp:"1 Nibble = 4 Bits = Half a Byte"},
+      {q:"Decimal 255 = Binary में?",opts:["A) 11111110","B) 11111111","C) 11111101","D) 10101010"],ans:"B",exp:"255 = 128+64+32+16+8+4+2+1 = 11111111 (8 ones)"},
+      {q:"1 MB = कितने KB?",opts:["A) 100","B) 512","C) 1000","D) 1024"],ans:"D",exp:"1 MB = 1024 KB = 1024 × 1024 Bytes"},
+      {q:"Bit का पूरा नाम क्या है?",opts:["A) Binary Digit","B) Byte Integer","C) Basic Input Type","D) Binary Information Transfer"],ans:"A",exp:"Bit = Binary Digit — 0 या 1"},
+      {q:"Binary में addition: 1 + 1 = ?",opts:["A) 2","B) 10","C) 11","D) 0"],ans:"B",exp:"Binary में 1+1 = 10 (carry 1, sum 0) — decimal 2 के बराबर।"},
+      {q:"1 GB = कितने MB?",opts:["A) 100","B) 512","C) 1000","D) 1024"],ans:"D",exp:"1 GB = 1024 MB"},
+      {q:"Decimal 5 का Binary क्या है?",opts:["A) 100","B) 101","C) 110","D) 111"],ans:"B",exp:"5 = 4+1 = 101 in binary"},
+      {q:"ASCII किसके लिए use होता है?",opts:["A) Image Encoding","B) Character Encoding","C) Video Compression","D) Audio Format"],ans:"B",exp:"ASCII (American Standard Code for Information Interchange) character encoding के लिए use होता है।"},
+      {q:"2's Complement किसलिए use होता है?",opts:["A) Multiplication के लिए","B) Negative numbers represent करने के लिए","C) Division के लिए","D) Addition के लिए"],ans:"B",exp:"2's Complement computer में negative numbers represent करने के लिए use होता है।"},
+      {q:"Octal 17 का Decimal equivalent क्या है?",opts:["A) 13","B) 14","C) 15","D) 17"],ans:"C",exp:"Octal 17 = 1×8 + 7×1 = 8+7 = 15 decimal"},
+    ]
+  }
+};
+
+function generateRevisionPYQs() {
+  return [
+    {q:"Computer में CPU का full form क्या है?",opts:["A) Central Processing Unit","B) Computer Program Unit","C) Central Program Upload","D) Control Processing Unit"],ans:"A",exp:"CPU = Central Processing Unit"},
+    {q:"1 KB = कितने bytes?",opts:["A) 1000","B) 1024","C) 512","D) 2048"],ans:"B",exp:"1 KB = 1024 Bytes"},
+    {q:"MS Word की file extension?",opts:["A) .xls","B) .ppt","C) .docx","D) .pdf"],ans:"C",exp:".docx = MS Word file extension"},
+    {q:"Binary में 1010 = Decimal में?",opts:["A) 8","B) 9","C) 10","D) 11"],ans:"C",exp:"1010 = 8+0+2+0 = 10"},
+    {q:"RAM का पूरा नाम?",opts:["A) Random Access Memory","B) Read All Memory","C) Runtime Access Module","D) Regular Access Memory"],ans:"A",exp:"RAM = Random Access Memory — volatile memory"},
+    {q:"Internet Protocol = ?",opts:["A) IM","B) IP","C) IN","D) IT"],ans:"B",exp:"IP = Internet Protocol"},
+    {q:"SQL में data retrieve करने के लिए?",opts:["A) INSERT","B) UPDATE","C) SELECT","D) DELETE"],ans:"C",exp:"SELECT = data retrieve करने के SQL command"},
+    {q:"C Language किसने बनाई?",opts:["A) Bill Gates","B) Dennis Ritchie","C) Steve Jobs","D) Linus Torvalds"],ans:"B",exp:"Dennis Ritchie, 1972, Bell Labs"},
+    {q:"Stack किस principle पर काम करता है?",opts:["A) FIFO","B) LIFO","C) LILO","D) Random"],ans:"B",exp:"Stack = LIFO (Last In First Out)"},
+    {q:"OSI Model में कितनी layers?",opts:["A) 4","B) 5","C) 6","D) 7"],ans:"D",exp:"OSI Model = 7 Layers"},
+    {q:"Router किस layer पर काम करता है?",opts:["A) Physical","B) Data Link","C) Network","D) Transport"],ans:"C",exp:"Router = Network Layer (Layer 3)"},
+    {q:"HTML का पूरा नाम?",opts:["A) Hyper Transfer Markup Language","B) HyperText Markup Language","C) High Text Making Language","D) Hyper Terminal Module Language"],ans:"B",exp:"HTML = HyperText Markup Language"},
+    {q:"Primary Key की विशेषता?",opts:["A) Duplicate allowed","B) NULL allowed","C) Unique + NOT NULL","D) Any value"],ans:"C",exp:"Primary Key = Unique और NOT NULL"},
+    {q:"Wi-Fi का IEEE standard?",opts:["A) 802.3","B) 802.11","C) 802.15","D) 802.5"],ans:"B",exp:"Wi-Fi = IEEE 802.11"},
+    {q:"Ctrl+Z shortcut क्या करता है?",opts:["A) Save","B) Copy","C) Undo","D) Print"],ans:"C",exp:"Ctrl+Z = Undo"},
+    {q:"Binary Search की time complexity?",opts:["A) O(n)","B) O(n²)","C) O(log n)","D) O(1)"],ans:"C",exp:"Binary Search = O(log n)"},
+    {q:"Merge Sort की time complexity?",opts:["A) O(n²)","B) O(n log n)","C) O(n)","D) O(log n)"],ans:"B",exp:"Merge Sort = O(n log n)"},
+    {q:"TCP/IP में कितनी layers?",opts:["A) 7","B) 5","C) 4","D) 3"],ans:"C",exp:"TCP/IP = 4 layers"},
+    {q:"Excel में SUM formula?",opts:["A) SUM(A1,A10)","B) =SUM(A1:A10)","C) ADD(A1:A10)","D) =ADD(A1,A10)"],ans:"B",exp:"=SUM(A1:A10) — formula = से शुरू, : range के लिए"},
+    {q:"OOP में Inheritance का अर्थ?",opts:["A) Data hide करना","B) Parent class के properties child में inherit होना","C) Same name methods","D) Object create करना"],ans:"B",exp:"Inheritance = parent class की properties और methods child class में आती हैं।"},
+  ];
+}
+
+function generateTopicPYQs(topics) {
+  return [
+    {q:"RAM का पूरा नाम क्या है?",opts:["A) Random Access Memory","B) Read All Memory","C) Runtime Access Module","D) Regular Array Memory"],ans:"A",exp:"RAM = Random Access Memory — temporary/volatile memory।"},
+    {q:"ROM का पूरा नाम?",opts:["A) Read Only Memory","B) Random Open Memory","C) Runtime Open Module","D) Read Online Memory"],ans:"A",exp:"ROM = Read Only Memory — permanent, non-volatile।"},
+    {q:"Hard Disk किस प्रकार की memory है?",opts:["A) Primary Memory","B) Secondary/Auxiliary Memory","C) Cache Memory","D) Register"],ans:"B",exp:"Hard Disk Secondary Storage है — permanent, large capacity।"},
+    {q:"Cache Memory की speed?",opts:["A) RAM से धीमी","B) RAM से तेज, CPU Register से धीमी","C) ROM से धीमी","D) Hard Disk से धीमी"],ans:"B",exp:"Speed order: Registers > Cache > RAM > Hard Disk।"},
+    {q:"USB का पूरा नाम?",opts:["A) Universal Serial Bus","B) United System Board","C) Universal System Bridge","D) Unified Serial Byte"],ans:"A",exp:"USB = Universal Serial Bus — most common data transfer interface।"},
+    {q:"OS का पूरा नाम?",opts:["A) Open Software","B) Operating System","C) Output System","D) Online Service"],ans:"B",exp:"OS = Operating System — computer hardware और software manage करता है।"},
+    {q:"Linux किस type का OS है?",opts:["A) Paid, Closed Source","B) Free, Open Source","C) Only for Servers","D) Microsoft का product"],ans:"B",exp:"Linux = Free और Open-Source Operating System, Linus Torvalds द्वारा बनाया।"},
+    {q:"Windows OS किस company का product है?",opts:["A) Apple","B) Google","C) Microsoft","D) IBM"],ans:"C",exp:"Windows = Microsoft का Operating System।"},
+    {q:"Computer Virus क्या है?",opts:["A) Hardware component","B) Malicious software program","C) Antivirus software","D) Operating system"],ans:"B",exp:"Computer Virus = malicious program जो self-replicate करता है और harm करता है।"},
+    {q:"Antivirus software किसलिए use होता है?",opts:["A) Computer speed बढ़ाने के लिए","B) Viruses detect और remove करने के लिए","C) Internet browsing के लिए","D) Data backup के लिए"],ans:"B",exp:"Antivirus = malware/virus detect, prevent, और remove करने के लिए।"},
+    {q:"PDF का पूरा नाम?",opts:["A) Portable Document Format","B) Printed Data File","C) Personal Document File","D) Public Data Format"],ans:"A",exp:"PDF = Portable Document Format — Adobe द्वारा develop।"},
+    {q:"GUI का पूरा नाम?",opts:["A) Graphical User Interface","B) General Unix Interface","C) Generated User Input","D) Global Unified Interface"],ans:"A",exp:"GUI = Graphical User Interface — icons और visual elements use करता है।"},
+    {q:"Bluetooth की range approximately कितनी होती है?",opts:["A) 1 km","B) 100 m","C) 10 m","D) 1000 m"],ans:"C",exp:"Bluetooth की range approximately 10 meters (class 2 devices)।"},
+    {q:"www का पूरा नाम?",opts:["A) World Wide Web","B) World Wire Web","C) Wide World Web","D) Web World Wide"],ans:"A",exp:"www = World Wide Web — internet पर hyperlinked documents का system।"},
+    {q:"HTTP का पूरा नाम?",opts:["A) Hyper Text Transfer Protocol","B) High Transfer Text Protocol","C) Hyper Terminal Transfer Process","D) Home Transfer Text Protocol"],ans:"A",exp:"HTTP = HyperText Transfer Protocol — web pages transfer करने के लिए।"},
+    {q:"Compiler और Interpreter में क्या अंतर है?",opts:["A) दोनों same हैं","B) Compiler पूरा program एक साथ translate करता है, Interpreter line by line","C) Interpreter faster है","D) Compiler slower है"],ans:"B",exp:"Compiler = whole program → object code। Interpreter = line by line execute।"},
+    {q:"Cloud Computing का क्या अर्थ है?",opts:["A) Weather computing","B) Internet के through computing services और storage","C) Wireless computing","D) Mobile computing"],ans:"B",exp:"Cloud Computing = internet के through data storage, servers, software provide करना।"},
+    {q:"QR Code का पूरा नाम?",opts:["A) Quick Response Code","B) Query Result Code","C) Quantum Read Code","D) Quick Read Code"],ans:"A",exp:"QR = Quick Response Code — 2D barcode जो camera से scan होता है।"},
+    {q:"Firewall किस प्रकार की security provide करती है?",opts:["A) Physical security","B) Network security (unauthorized access block करती है)","C) Data encryption","D) Password protection"],ans:"B",exp:"Firewall network security device/software है जो unauthorized network access block करती है।"},
+    {q:"VPN का पूरा नाम?",opts:["A) Virtual Private Network","B) Very Public Network","C) Verified Protected Node","D) Virtual Protocol Network"],ans:"A",exp:"VPN = Virtual Private Network — secure encrypted connection over internet।"},
+  ];
+}
+
+function getContentForDay(day, topics) {
+  if (DAY_CONTENT[day]) return DAY_CONTENT[day];
+  const isRevision = topics.some(t => t.includes("⭐"));
+  if (isRevision) {
+    return {
+      overview: "यह Revision Day है। आज तक पढ़े गए सभी topics को दोबारा review करो। अपनी notes देखो, weak areas identify करो। Mock tests दो और time management practice करो।",
+      keyPoints: ["Previous topics का quick review करो","Notes से important formulas और facts याद करो","Practice MCQs solve करो","Weak areas पर extra focus दो","Mind maps बनाओ","Exam pattern के according practice करो"],
+      examTip: "⭐ Revision में जल्दी न करो। Quality over quantity। हर topic का एक page summary बनाओ।",
+      pyqs: generateRevisionPYQs()
+    };
+  }
+  return {
+    overview: `${topics.join(", ")} — Computer Anudeshak Exam का महत्वपूर्ण topic। इस topic से exam में 2-4 questions आते हैं। Theory के साथ-साथ practical examples समझो और definitions याद करो।`,
+    keyPoints: [
+      `${topics[0]} की basic definition और concepts समझो`,
+      "Types और classification याद करो",
+      "Applications और real-world examples note करो",
+      "Advantages और Disadvantages याद करो",
+      "Related terminology और keywords highlight करो",
+      "Previous year questions practice करो"
+    ],
+    examTip: `⭐ ${topics[0]} topic से direct definition-based questions आते हैं। Technical terms की exact spelling और full forms याद रखो।`,
+    pyqs: generateTopicPYQs(topics)
+  };
+}
+
+// ════ DEFAULT SYLLABUS ════
+const DEFAULT_SYLLABUS = [
+  {id:"s1",subject:"Phase 1 — Computer Fundamentals + Rajasthan Basics",emoji:"💻",color:"#6366F1",days:[
+    {day:1,topics:["Computer Basics","Input / Output Devices","Types of Computer"]},
+    {day:2,topics:["Data Representation","Digital vs Analog","Number System Overview"]},
+    {day:3,topics:["Binary, Decimal, Hexadecimal Conversion"]},
+    {day:4,topics:["Data Processing","File Concepts"]},
+    {day:5,topics:["MS Word Basics"]},
+    {day:6,topics:["MS Word Advanced Features"]},
+    {day:7,topics:["⭐ Week 1 Revision — Computer Basics + MS Word"]},
+    {day:8,topics:["MS Excel Basics"]},
+    {day:9,topics:["Excel Formulas (SUM, AVG, IF, VLOOKUP)"]},
+    {day:10,topics:["Excel Charts & Graphs"]},
+    {day:11,topics:["MS PowerPoint"]},
+    {day:12,topics:["MS Access Introduction"]},
+    {day:13,topics:["DBMS Basics"]},
+    {day:14,topics:["⭐ Week 2 Revision — MS Office + DBMS"]},
+    {day:15,topics:["Rajasthan Geography — Location, Districts, Boundaries"]},
+    {day:16,topics:["Rajasthan Rivers & Lakes"]},
+    {day:17,topics:["Rajasthan Agriculture & Minerals"]},
+    {day:18,topics:["Rajasthan Culture, Fairs & Festivals"]},
+    {day:19,topics:["Reasoning — Number & Letter Series"]},
+    {day:20,topics:["Reasoning — Analogy & Classification"]},
+    {day:21,topics:["⭐ Week 3 Revision — Rajasthan Basics + Reasoning"]},
+  ]},
+  {id:"s2",subject:"Phase 2 — Programming + Rajasthan History",emoji:"⌨️",color:"#22C55E",days:[
+    {day:22,topics:["C Language Basics — Structure, Variables, Data Types"]},
+    {day:23,topics:["C Variables, Loops (for, while, do-while)"]},
+    {day:24,topics:["C Functions — Definition, Call, Recursion"]},
+    {day:25,topics:["C Arrays — 1D, 2D, String Operations"]},
+    {day:26,topics:["OOP Concepts — Class, Object, Inheritance, Polymorphism"]},
+    {day:27,topics:["Python Introduction — Syntax, Lists, Functions"]},
+    {day:28,topics:["⭐ Week 4 Revision — C, OOP, Python"]},
+    {day:29,topics:["Java Basics — JVM, OOP, Syntax"]},
+    {day:30,topics:[".NET Introduction — Framework, C# Basics"]},
+    {day:31,topics:["AI & Machine Learning Basics"]},
+    {day:32,topics:["Blockchain Technology Basics"]},
+    {day:33,topics:["Rajasthan Ancient History — Indus Valley to Rajputs"]},
+    {day:34,topics:["Medieval Rajasthan — Mughal Era, Key Rulers"]},
+    {day:35,topics:["⭐ Week 5 Revision — Java, AI, Rajasthan History"]},
+    {day:36,topics:["Modern Rajasthan — Post-independence"]},
+    {day:37,topics:["Freedom Movement in Rajasthan"]},
+    {day:38,topics:["Reasoning — Coding-Decoding"]},
+    {day:39,topics:["Reasoning — Direction & Distance"]},
+    {day:40,topics:["Data Interpretation — Charts & Tables"]},
+    {day:41,topics:["Data Sufficiency"]},
+    {day:42,topics:["⭐ Week 6 Revision — Modern History + Reasoning"]},
+  ]},
+  {id:"s3",subject:"Phase 3 — Data Structure + OS + Network",emoji:"🌲",color:"#F59E0B",days:[
+    {day:43,topics:["Data Structures Introduction — ADT, Complexity"]},
+    {day:44,topics:["Arrays — Operations, Searching"]},
+    {day:45,topics:["Linked List — Singly, Doubly, Circular"]},
+    {day:46,topics:["Stack — LIFO, Push, Pop, Applications"]},
+    {day:47,topics:["Queue — FIFO, Circular Queue, Priority Queue"]},
+    {day:48,topics:["Trees — Binary Tree, BST, Traversals"]},
+    {day:49,topics:["⭐ Week 7 Revision — DS Part 1"]},
+    {day:50,topics:["Searching — Linear, Binary Search"]},
+    {day:51,topics:["Sorting — Bubble, Selection, Insertion, Quick, Merge"]},
+    {day:52,topics:["Graph — BFS, DFS, Representation"]},
+    {day:53,topics:["OS Basics — Functions, Types, System Calls"]},
+    {day:54,topics:["Process Management — Scheduling, Deadlock"]},
+    {day:55,topics:["Memory Management — Paging, Segmentation, Virtual Memory"]},
+    {day:56,topics:["⭐ Week 8 Revision — DS Part 2 + OS"]},
+    {day:57,topics:["Computer Networks — Types, Topologies"]},
+    {day:58,topics:["OSI Model — 7 Layers Detail"]},
+    {day:59,topics:["LAN / WAN — Protocols, Devices"]},
+    {day:60,topics:["Mobile Communication — 1G to 5G, Bluetooth, WiFi"]},
+    {day:61,topics:["Network Security — Threats, Virus, Malware"]},
+    {day:62,topics:["Firewall, Backup & Recovery, Encryption"]},
+    {day:63,topics:["⭐ Week 9 Revision — Networks + Security"]},
+  ]},
+  {id:"s4",subject:"Phase 4 — Advanced Topics",emoji:"🗄️",color:"#EC4899",days:[
+    {day:64,topics:["DBMS Architecture — 1-tier, 2-tier, 3-tier"]},
+    {day:65,topics:["SQL Basics — DDL, DML, Joins, Queries"]},
+    {day:66,topics:["Database Design — ER Diagram, Normalization"]},
+    {day:67,topics:["NoSQL — Types, MongoDB, SQL vs NoSQL"]},
+    {day:68,topics:["System Analysis — SDLC, Feasibility, DFD"]},
+    {day:69,topics:["UML — Use Case, Class, Sequence Diagrams"]},
+    {day:70,topics:["⭐ Week 10 Revision — DBMS + System Analysis"]},
+    {day:71,topics:["SDLC Models — Waterfall, Agile, Spiral"]},
+    {day:72,topics:["Software Testing — Black Box, White Box, Unit Testing"]},
+    {day:73,topics:["IoT — Architecture, Protocols, Applications"]},
+    {day:74,topics:["HTML — Tags, Structure, Forms"]},
+    {day:75,topics:["XML — Syntax, DTD, XSLT"]},
+    {day:76,topics:["⭐ Week 11 Revision — Advanced Topics"]},
+  ]},
+  {id:"s5",subject:"Phase 5 — Final Preparation",emoji:"🎯",color:"#EF4444",days:[
+    {day:91,topics:["Rajasthan Current Affairs — Important Events 2024-25"]},
+    {day:92,topics:["Reasoning Practice — Mixed Topics"]},
+    {day:93,topics:["Computer Full Revision — All Topics Quick Review"]},
+    {day:94,topics:["Computer MCQ Practice — 50 Questions"]},
+    {day:95,topics:["Paper-1 MCQ Practice — GK + Reasoning"]},
+    {day:96,topics:["Full Mock Test — Paper 1 + Paper 2"]},
+    {day:97,topics:["⭐ Revision — Weak Areas Identified in Mock"]},
+    {day:98,topics:["Weak Topics Deep Revision"]},
+    {day:99,topics:["Full Mock Test — Final Practice"]},
+    {day:100,topics:["⭐ Final Revision — Key Points, Formulas, Important Topics"]},
+  ]},
+];
+
+// ════ RAJASTHAN GK DATA ════
+const RAJ_GK_SECTIONS = [
+  { id:"history", title:"राजस्थान इतिहास", emoji:"🏰", color:"#EF4444", desc:"प्राचीन, मध्यकालीन व आधुनिक इतिहास", questions:[
+    {q:"हल्दीघाटी का युद्ध कब हुआ था?",opts:["A) 1576","B) 1556","C) 1600","D) 1526"],ans:"A",exp:"18 जून 1576 को महाराणा प्रताप और अकबर के सेनापति मानसिंह के बीच हुआ।"},
+    {q:"महाराणा प्रताप का जन्म कहाँ हुआ?",opts:["A) चित्तौड़गढ़","B) उदयपुर","C) कुम्भलगढ़","D) राजसमंद"],ans:"C",exp:"9 मई 1540 को कुम्भलगढ़ दुर्ग में जन्म।"},
+    {q:"पृथ्वीराज चौहान III की राजधानी?",opts:["A) जयपुर","B) अजमेर","C) जोधपुर","D) बीकानेर"],ans:"B",exp:"पृथ्वीराज चौहान III की राजधानी अजमेर (अजयमेरु) थी।"},
+    {q:"जोधपुर की स्थापना किसने की?",opts:["A) राव जोधा","B) राव बीका","C) राव चन्द्रसेन","D) उदयसिंह"],ans:"A",exp:"1459 में राव जोधा ने जोधपुर की स्थापना की।"},
+    {q:"बीकानेर की स्थापना किसने की?",opts:["A) राव जोधा","B) राव बीका","C) करण सिंह","D) गंगासिंह"],ans:"B",exp:"1488 में राव बीका (राव जोधा के पुत्र) ने बीकानेर बसाया।"},
+    {q:"जयपुर की स्थापना किसने की?",opts:["A) मिर्जा राजा जयसिंह","B) सवाई जयसिंह द्वितीय","C) भगवन्तदास","D) मानसिंह I"],ans:"B",exp:"1727 में सवाई जयसिंह द्वितीय ने जयपुर बसाया।"},
+    {q:"खानवा का युद्ध कब हुआ?",opts:["A) 1526","B) 1527","C) 1528","D) 1530"],ans:"B",exp:"17 मार्च 1527 को राणा सांगा और बाबर के बीच — राणा सांगा हारे।"},
+    {q:"1857 में राजस्थान में प्रथम विद्रोह कहाँ?",opts:["A) जयपुर","B) नसीराबाद","C) अजमेर","D) जोधपुर"],ans:"B",exp:"28 मई 1857 को नसीराबाद (अजमेर) में पहला विद्रोह हुआ।"},
+    {q:"राजस्थान एकीकरण कितने चरणों में हुआ?",opts:["A) 5","B) 6","C) 7","D) 8"],ans:"C",exp:"7 चरणों में 18 मार्च 1948 से 1 नवंबर 1956 तक।"},
+    {q:"'राजस्थान' नाम किसने दिया?",opts:["A) कर्नल जेम्स टॉड","B) जॉर्ज थॉमस","C) अकबर","D) सर जॉन माल्कम"],ans:"A",exp:"कर्नल टॉड ने 1829 में अपनी पुस्तक में 'राजस्थान' नाम दिया।"},
+    {q:"चित्तौड़गढ़ का प्रथम साका कब?",opts:["A) 1303","B) 1534","C) 1568","D) 1200"],ans:"A",exp:"1303 में अलाउद्दीन खिलजी के आक्रमण के समय — रानी पद्मिनी का जौहर।"},
+    {q:"राजस्थान के प्रथम मुख्यमंत्री?",opts:["A) मोहनलाल सुखाड़िया","B) जयनारायण व्यास","C) हीरालाल शास्त्री","D) टीकाराम पालीवाल"],ans:"C",exp:"हीरालाल शास्त्री 1949-1951 प्रथम मुख्यमंत्री रहे।"},
+    {q:"'वृहत् राजस्थान' का गठन कब?",opts:["A) 18 मार्च 1948","B) 25 मार्च 1948","C) 30 मार्च 1949","D) 26 जनवरी 1950"],ans:"C",exp:"30 मार्च 1949 को जयपुर, जोधपुर, बीकानेर, जैसलमेर मिले।"},
+    {q:"महाराणा प्रताप के घोड़े का नाम?",opts:["A) बुलबुल","B) चेतक","C) रणवीर","D) नीलकंठ"],ans:"B",exp:"'चेतक' — हल्दीघाटी युद्ध में घायल होकर भी प्रताप को बचाया।"},
+    {q:"'राजस्थान दिवस' कब मनाया जाता है?",opts:["A) 15 अगस्त","B) 26 जनवरी","C) 30 मार्च","D) 1 नवंबर"],ans:"C",exp:"30 मार्च 1949 को 'वृहत् राजस्थान' बना इसलिए 30 मार्च।"},
+    {q:"मीराबाई का जन्म स्थान?",opts:["A) चित्तौड़गढ़","B) मेड़ता (नागौर)","C) द्वारका","D) वृंदावन"],ans:"B",exp:"1498 में मेड़ता (नागौर) के कुड़की गाँव में जन्म।"},
+    {q:"'हवा महल' का निर्माण कब?",opts:["A) 1727","B) 1799","C) 1835","D) 1800"],ans:"B",exp:"1799 में महाराजा सवाई प्रताप सिंह ने बनवाया।"},
+    {q:"'सोनार किला' किसे कहते हैं?",opts:["A) मेहरानगढ़","B) जैसलमेर दुर्ग","C) जूनागढ़","D) चित्तौड़गढ़"],ans:"B",exp:"पीले बलुआ पत्थर से बने जैसलमेर दुर्ग को 'सोनार किला' कहते हैं।"},
+    {q:"'राजस्थान के नेहरू' किसे कहते हैं?",opts:["A) मोहनलाल सुखाड़िया","B) जयनारायण व्यास","C) हीरालाल शास्त्री","D) टीकाराम पालीवाल"],ans:"A",exp:"मोहनलाल सुखाड़िया — 'राजस्थान के नेहरू' और 'आधुनिक राजस्थान के निर्माता'।"},
+    {q:"पोकरण परमाणु परीक्षण कब-कब हुए?",opts:["A) 1969 और 1994","B) 1974 और 1998","C) 1980 और 2000","D) 1972 और 1996"],ans:"B",exp:"1974 (ऑपरेशन स्माइलिंग बुद्धा) और 1998 (ऑपरेशन शक्ति)।"},
+  ]},
+  { id:"geography", title:"राजस्थान भूगोल", emoji:"🗺️", color:"#22C55E", desc:"भौगोलिक स्थिति, नदियाँ, खनिज, जनसंख्या", questions:[
+    {q:"राजस्थान का कुल क्षेत्रफल?",opts:["A) 3,42,239 वर्ग किमी","B) 3,07,713 वर्ग किमी","C) 2,98,635 वर्ग किमी","D) 3,51,238 वर्ग किमी"],ans:"A",exp:"3,42,239 वर्ग किमी — भारत का 10.41%।"},
+    {q:"राजस्थान का सबसे बड़ा जिला?",opts:["A) बाड़मेर","B) बीकानेर","C) जैसलमेर","D) जोधपुर"],ans:"C",exp:"जैसलमेर (38,401 वर्ग किमी) — सबसे बड़ा।"},
+    {q:"राजस्थान का सबसे छोटा जिला?",opts:["A) दौसा","B) धौलपुर","C) अजमेर","D) टोंक"],ans:"B",exp:"धौलपुर (3,033 वर्ग किमी) — सबसे छोटा।"},
+    {q:"राजस्थान का सर्वोच्च पर्वत शिखर?",opts:["A) सेर","B) गुरुशिखर (माउंट आबू)","C) जरगा","D) कुम्भलगढ़"],ans:"B",exp:"गुरुशिखर (1722 मीटर) — माउंट आबू, सिरोही।"},
+    {q:"राजस्थान की सबसे लंबी नदी?",opts:["A) बनास","B) माही","C) चम्बल","D) लूनी"],ans:"C",exp:"चम्बल — राजस्थान में 322 किमी बहती है।"},
+    {q:"'राजस्थान की जीवन रेखा' किसे कहते हैं?",opts:["A) गंग नहर","B) इंदिरा गांधी नहर (IGNP)","C) चम्बल नहर","D) भाखड़ा नहर"],ans:"B",exp:"IGNP को 'राजस्थान की जीवन रेखा' और 'मरु-गंगा' कहते हैं।"},
+    {q:"'सांभर झील' भारत की कैसी झील है?",opts:["A) सबसे बड़ी ताजे पानी की","B) सबसे बड़ी खारे पानी की","C) सबसे गहरी","D) सबसे छोटी"],ans:"B",exp:"सांभर — जयपुर-नागौर सीमा पर — सबसे बड़ी खारे पानी की झील।"},
+    {q:"राजस्थान का 'राज्य वृक्ष' कौन सा है?",opts:["A) पीपल","B) खेजड़ी","C) बरगद","D) रोहिड़ा"],ans:"B",exp:"खेजड़ी (Prosopis cineraria) राज्य वृक्ष है।"},
+    {q:"राजस्थान का 'राज्य पक्षी' कौन सा है?",opts:["A) मोर","B) गोडावण","C) सारस","D) चील"],ans:"B",exp:"गोडावण (Great Indian Bustard) — अत्यंत दुर्लभ।"},
+    {q:"राजस्थान का 'राज्य पशु' कौन सा है?",opts:["A) शेर","B) हाथी","C) ऊँट","D) चीता"],ans:"C",exp:"ऊँट राजस्थान का राज्य पशु है।"},
+    {q:"'थार मरुस्थल' विश्व का कौन सा मरुस्थल है?",opts:["A) सबसे बड़ा","B) दूसरा","C) दसवाँ","D) पाँचवाँ"],ans:"C",exp:"विश्व का 10वाँ और एशिया का सबसे बड़ा मरुस्थल।"},
+    {q:"'मकराना' (नागौर) किसलिए प्रसिद्ध है?",opts:["A) लोहा","B) ताँबा","C) सफेद संगमरमर","D) जिप्सम"],ans:"C",exp:"ताज महल इसी मकराना संगमरमर से बना है।"},
+    {q:"'खेतड़ी' (झुंझुनू) किसलिए प्रसिद्ध है?",opts:["A) जस्ता","B) लोहा","C) ताँबा","D) सीसा"],ans:"C",exp:"'राजस्थान का ताँबा नगरी' — HCL की बड़ी खदान।"},
+    {q:"राजस्थान की पाकिस्तान से सीमा कितनी?",opts:["A) 1,050 किमी","B) 1,070 किमी","C) 1,100 किमी","D) 989 किमी"],ans:"B",exp:"रेडक्लिफ रेखा — 1,070 किमी।"},
+    {q:"'केवलादेव राष्ट्रीय उद्यान' कहाँ है?",opts:["A) अलवर","B) भरतपुर","C) सवाई माधोपुर","D) जयपुर"],ans:"B",exp:"भरतपुर — UNESCO World Heritage Site।"},
+    {q:"कर्क रेखा किस जिले से गुजरती है?",opts:["A) उदयपुर-चित्तौड़","B) बाँसवाड़ा-डूँगरपुर","C) प्रतापगढ़-झालावाड़","D) सिरोही-जालौर"],ans:"B",exp:"23°30'N — बाँसवाड़ा और डूँगरपुर से गुजरती है।"},
+    {q:"राजस्थान में सर्वाधिक वर्षा कहाँ?",opts:["A) जोधपुर","B) माउंट आबू (सिरोही)","C) बाँसवाड़ा","D) कोटा"],ans:"B",exp:"माउंट आबू में 150 cm से अधिक वर्षा।"},
+    {q:"'घग्घर नदी' किन जिलों में बहती है?",opts:["A) बीकानेर","B) श्रीगंगानगर और हनुमानगढ़","C) चुरू","D) झुंझुनू"],ans:"B",exp:"'मृत नदी' — प्राचीन सरस्वती नदी का अवशेष मानी जाती है।"},
+    {q:"राजस्थान की सबसे बड़ी जनजाति?",opts:["A) मीणा","B) भील","C) गरासिया","D) सहरिया"],ans:"B",exp:"भील — राजस्थान की सबसे बड़ी जनजाति।"},
+    {q:"'बीसलपुर बाँध' किस नदी पर?",opts:["A) बनास","B) चम्बल","C) माही","D) बाणगंगा"],ans:"A",exp:"बनास नदी पर — टोंक जिले में। जयपुर-अजमेर जलापूर्ति।"},
+  ]},
+  { id:"culture", title:"कला, संस्कृति एवं लोकजीवन", emoji:"🎨", color:"#8B5CF6", desc:"चित्रकला, नृत्य, संगीत, मेले, लोक देवता", questions:[
+    {q:"'किशनगढ़ चित्रशैली' की पहचान?",opts:["A) वन्यजीव चित्र","B) 'बणी-ठणी' — खंजन नयन, लंबी गर्दन","C) युद्ध दृश्य","D) प्राकृतिक परिदृश्य"],ans:"B",exp:"बणी-ठणी — 'भारत की मोना लिसा' — चित्रकार निहालचंद।"},
+    {q:"'घूमर नृत्य' किसका है?",opts:["A) पुरुष नृत्य","B) महिला लोक नृत्य","C) बच्चों का नृत्य","D) धार्मिक नृत्य"],ans:"B",exp:"घूमर — राजस्थान का राज्य नृत्य — महिलाओं का लोक नृत्य।"},
+    {q:"'कालबेलिया नृत्य' को UNESCO ने कब शामिल किया?",opts:["A) 2005","B) 2010","C) 2015","D) 2012"],ans:"B",exp:"2010 में अमूर्त सांस्कृतिक विरासत में शामिल।"},
+    {q:"'गणगौर पर्व' कब मनाया जाता है?",opts:["A) चैत्र शुक्ल 3","B) कार्तिक शुक्ल 11","C) श्रावण शुक्ल 3","D) आषाढ़ शुक्ल 2"],ans:"A",exp:"चैत्र शुक्ल तृतीया — राजस्थान का प्रमुख त्योहार।"},
+    {q:"'मरु महोत्सव' कहाँ और कब?",opts:["A) जोधपुर, जनवरी","B) जैसलमेर, माघ पूर्णिमा","C) बाड़मेर, दिसंबर","D) बीकानेर, फरवरी"],ans:"B",exp:"जैसलमेर — माघ पूर्णिमा पर।"},
+    {q:"'पुष्कर मेला' कब लगता है?",opts:["A) कार्तिक शुक्ल 11 से पूर्णिमा","B) चैत्र पूर्णिमा","C) श्रावण पूर्णिमा","D) माघ पूर्णिमा"],ans:"A",exp:"विश्व का सबसे बड़ा ऊँट मेला।"},
+    {q:"'माँगणियार' कौन हैं?",opts:["A) भील जनजाति","B) जैसलमेर-बाड़मेर के मुस्लिम लोक संगीतकार","C) जोधपुर के कारीगर","D) दरबारी नर्तक"],ans:"B",exp:"माँगणियार — पश्चिम राजस्थान के पेशेवर लोक संगीतकार।"},
+    {q:"'फड़ चित्रण' किस जिले का है?",opts:["A) जयपुर","B) शाहपुरा (भीलवाड़ा)","C) उदयपुर","D) बीकानेर"],ans:"B",exp:"शाहपुरा — देवनारायण जी और पाबूजी की फड़ें प्रसिद्ध।"},
+    {q:"'मीनाकारी' किस शहर की?",opts:["A) उदयपुर","B) जयपुर","C) अजमेर","D) बीकानेर"],ans:"B",exp:"Enamelling — जयपुर की विशेष आभूषण कला।"},
+    {q:"'केसरिया बालम' किस राग में?",opts:["A) भैरवी","B) भीमपलासी","C) माँड","D) पहाड़ी"],ans:"C",exp:"माँड — राजस्थान का अनौपचारिक राज्यगीत।"},
+    {q:"'बणी-ठणी' को क्या कहते हैं?",opts:["A) राजस्थान की मोना लिसा","B) भारत की मोना लिसा","C) विश्व की मोना लिसा","D) मेवाड़ की रानी"],ans:"B",exp:"'बणी-ठणी' — 'भारत की मोना लिसा'।"},
+    {q:"'तीज' पर्व कब?",opts:["A) सावन शुक्ल तृतीया","B) चैत्र शुक्ल 3","C) भाद्रपद कृष्ण 8","D) कार्तिक पूर्णिमा"],ans:"A",exp:"'हरियाली तीज' — सावन शुक्ल तृतीया — महिलाओं का पर्व।"},
+    {q:"'भवाई नृत्य' की विशेषता?",opts:["A) सिर पर कई मटके रखकर नृत्य","B) तलवारों के साथ","C) आग पर नृत्य","D) पानी में नृत्य"],ans:"A",exp:"सिर पर अनेक घड़े/मटके रखकर अद्भुत संतुलन नृत्य।"},
+    {q:"'रामदेवजी' का मेला कहाँ?",opts:["A) जैसलमेर (रामदेवरा)","B) बाड़मेर","C) जोधपुर","D) बीकानेर"],ans:"A",exp:"रामदेवरा (रुणिचा) — रामसा पीर — हिंदू-मुस्लिम दोनों मानते हैं।"},
+    {q:"'विश्नोई संप्रदाय' के प्रवर्तक?",opts:["A) संत पीपाजी","B) जांभोजी (जम्भेश्वर)","C) रामदेवजी","D) देवनारायणजी"],ans:"B",exp:"1485 में जांभोजी ने मुकाम (बीकानेर) में स्थापना की।"},
+    {q:"'मीराबाई' किसकी भक्त थीं?",opts:["A) शिव","B) कृष्ण","C) राम","D) विष्णु"],ans:"B",exp:"'गिरधर गोपाल' — कृष्ण की अनन्य भक्त।"},
+    {q:"'उस्ताकला' किस शहर की?",opts:["A) जैसलमेर","B) बीकानेर","C) जोधपुर","D) अजमेर"],ans:"B",exp:"ऊँट की खाल पर सोने की नक्काशी — बीकानेर।"},
+    {q:"'तेरह ताली नृत्य' किनका है?",opts:["A) कंजर जाति","B) कामड़ जाति की महिलाएँ","C) गरासिया","D) भील"],ans:"B",exp:"13 मंजीरे शरीर पर बाँधकर कामड़ जाति की महिलाएँ करती हैं।"},
+    {q:"'गोगाजी' का मेला कहाँ?",opts:["A) गोगामेड़ी (हनुमानगढ़)","B) नागौर","C) सीकर","D) झुंझुनू"],ans:"A",exp:"साँपों के देवता — गोगामेड़ी।"},
+    {q:"'कोटा चित्रशैली' किसके लिए प्रसिद्ध?",opts:["A) धार्मिक चित्र","B) शिकार और वन्यजीव दृश्य","C) महिला चित्रण","D) दरबारी जीवन"],ans:"B",exp:"बाघ, हाथी, घोड़े और शिकार दृश्य — कोटा शैली की विशेषता।"},
+  ]}
+];
+
+// ════════════════════════════════════════════
+// APP STATE
+// ════════════════════════════════════════════
+let state = {
+  dark: true,
+  user: null,
+  syllabus: JSON.parse(JSON.stringify(DEFAULT_SYLLABUS)),
+  progress: {},
+  dayContent: {},
+  notes: [],
+  tab: "dashboard",
+  activeSub: null,
+  search: "",
+  expandedDay: null,
+  rajGK: { activeSection: 0, qIdx: 0, selected: null, score: 0, answered: 0, quizMode: false, finished: false, showAll: false, allQidx: null },
+  studyPanels: {}, // day -> {tab, ans, submitted, score}
+};
+
+function setState(patch) {
+  Object.assign(state, patch);
+  render();
+}
+
+// ════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════
+function getTheme() {
+  const dark = state.dark;
+  return {
+    C: dark ? "#fff" : "#111827",
+    CSUB: dark ? "rgba(255,255,255,0.5)" : "#6b7280",
+    CARD: dark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.88)",
+    BDR: dark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.08)",
+    INBG: dark ? "rgba(255,255,255,0.08)" : "#fff",
+    BG: dark ? "linear-gradient(135deg,#0f0c29 0%,#1a1040 50%,#16213e 100%)" : "linear-gradient(135deg,#e0e7ff,#f0fdf4,#fef3c7)",
+  };
+}
+
+function getAllDays() {
+  return state.syllabus.flatMap(s => s.days);
+}
+
+function isDone(day) {
+  const d = getAllDays().find(x => x.day === day);
+  return d && d.topics.every((_, i) => state.progress[`${day}-${i}`]);
+}
+
+function getStats() {
+  const allDays = getAllDays();
+  const totalDays = allDays.length;
+  const totalTopics = allDays.reduce((a, d) => a + d.topics.length, 0);
+  const completedDays = allDays.filter(d => isDone(d.day)).length;
+  const completedTopics = Object.values(state.progress).filter(Boolean).length;
+  const overallPct = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
+  const topicPct = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
+
+  const sorted = [...allDays].sort((a, b) => a.day - b.day);
+  let longest = 0, cur = 0;
+  sorted.forEach(d => { if (isDone(d.day)) { cur++; longest = Math.max(longest, cur); } else cur = 0; });
+  cur = 0;
+  for (let i = sorted.length - 1; i >= 0; i--) { if (isDone(sorted[i].day)) cur++; else break; }
+  const streak = cur;
+
+  return { totalDays, totalTopics, completedDays, completedTopics, overallPct, topicPct, streak, longest };
+}
+
+function getNextDay() {
+  const all = state.syllabus.flatMap(s => s.days.map(d => d.day));
+  return all.length > 0 ? Math.max(...all) + 1 : 1;
+}
+
+function toggleTopic(day, ti) {
+  const key = `${day}-${ti}`;
+  const newProg = {...state.progress, [key]: !state.progress[key]};
+  state.progress = newProg;
+  const d = getAllDays().find(x => x.day === day);
+  if (d && d.topics.every((_, i) => newProg[`${day}-${i}`]) && !d.topics.every((_, i) => state.progress[`${day}-${i}`])) {
+    showCelebration(day);
+  }
+  render();
+}
+
+function showCelebration(day) {
+  const el = document.getElementById('celebrationOverlay');
+  const T = getTheme();
+  el.style.display = 'flex';
+  el.innerHTML = `<div style="background:${T.CARD};backdrop-filter:blur(24px);border:${T.BDR};border-radius:24px;padding:32px 48px;text-align:center;">
+    <div style="font-size:52px;margin-bottom:8px;">🎉</div>
+    <div style="font-size:24px;font-weight:800;color:${T.C};">Day ${day} Complete!</div>
+  </div>`;
+  startConfetti();
+  setTimeout(() => { el.style.display = 'none'; stopConfetti(); }, 3000);
+}
+
+// ════ CONFETTI ════
+let confettiRAF = null;
+function startConfetti() {
+  const canvas = document.getElementById('confettiCanvas');
+  canvas.style.display = 'block';
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  const pts = Array.from({length:100},()=>({x:Math.random()*canvas.width,y:Math.random()*-canvas.height,r:Math.random()*6+2,d:Math.random()*100,color:`hsl(${Math.random()*360},80%,60%)`,ta:0,ts:Math.random()*.1+.04}));
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pts.forEach(p=>{p.ta+=p.ts;p.y+=(Math.cos(p.d)+2+p.r/2)*1.4;const t=Math.sin(p.ta)*12;ctx.beginPath();ctx.lineWidth=p.r;ctx.strokeStyle=p.color;ctx.moveTo(p.x+t,p.y);ctx.lineTo(p.x+t,p.y+p.r*2);ctx.stroke();if(p.y>canvas.height){p.y=-20;p.x=Math.random()*canvas.width;}});
+    confettiRAF=requestAnimationFrame(draw);
+  }
+  draw();
+}
+function stopConfetti() {
+  if(confettiRAF) cancelAnimationFrame(confettiRAF);
+  document.getElementById('confettiCanvas').style.display='none';
+}
+
+// ════ RING SVG ════
+function ringHTML(value, size=100, stroke=9, color="#6366F1", sub='', C='#fff') {
+  const r=(size-stroke)/2, circ=2*Math.PI*r, off=circ-(value/100)*circ;
+  return `<div class="ring-container" style="width:${size}px;height:${size}px;">
+    <svg width="${size}" height="${size}" style="transform:rotate(-90deg);">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="${stroke}"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round" style="transition:stroke-dashoffset 0.8s ease;"/>
+    </svg>
+    <div class="ring-text"><span style="font-weight:800;font-size:${size>90?18:13}px;color:${C};">${value}%</span>${sub?`<span style="font-size:9px;opacity:.5;margin-top:1px;color:${C};">${sub}</span>`:''}</div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════
+// RENDER FUNCTIONS
+// ════════════════════════════════════════════
+function render() {
+  const T = getTheme();
+  document.body.style.background = T.BG;
+  document.body.style.color = T.C;
+
+  if (!state.user) {
+    document.getElementById('app').innerHTML = renderLogin(T);
+    attachLoginEvents();
+    return;
+  }
+  document.getElementById('app').innerHTML = renderMain(T);
+  attachMainEvents();
+}
+
+// ════ LOGIN PAGE ════
+function renderLogin(T) {
+  const mode = state._loginMode || 'login';
+  const selAvatar = state._selAvatar || DOODLE_AVATARS[0].id;
+  const curAvatar = DOODLE_AVATARS.find(a=>a.id===selAvatar);
+  const IB = `width:100%;padding:12px 16px;border-radius:14px;border:${T.BDR};background:${T.INBG};color:${T.C};font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;`;
+  return `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div style="width:100%;max-width:440px;">
+      <div style="text-align:center;margin-bottom:28px;">
+        <div style="width:76px;height:76px;border-radius:22px;overflow:hidden;margin:0 auto 14px;box-shadow:0 8px 32px rgba(99,102,241,0.4);background:${curAvatar.bg};">${curAvatar.svg}</div>
+        <div style="font-weight:800;font-size:26px;color:${T.C};">${APP_NAME}</div>
+        <div style="font-size:13px;color:${T.CSUB};margin-top:6px;">${APP_SUB}</div>
+      </div>
+      <div style="background:${T.CARD};backdrop-filter:blur(24px);border:${T.BDR};border-radius:24px;padding:28px;">
+        <div style="display:flex;gap:4px;margin-bottom:22px;padding:4px;border-radius:14px;background:${state.dark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.04)'};">
+          <button onclick="setLoginMode('login')" style="flex:1;padding:9px 0;border-radius:11px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:${mode==='login'?'#6366F1':'transparent'};color:${mode==='login'?'#fff':T.CSUB};">🔑 Login</button>
+          <button onclick="setLoginMode('signup')" style="flex:1;padding:9px 0;border-radius:11px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:${mode==='signup'?'#6366F1':'transparent'};color:${mode==='signup'?'#fff':T.CSUB};">✨ Sign Up</button>
+        </div>
+        ${mode==='signup'?`<div style="margin-bottom:14px;">
+          <label style="font-size:12px;font-weight:700;color:${T.CSUB};margin-bottom:8px;display:block;">🐾 Cute Avatar चुनो</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${DOODLE_AVATARS.map(av=>`<button onclick="setAvatar('${av.id}')" title="${av.label}" style="width:48px;height:48px;border-radius:14px;overflow:hidden;border:${selAvatar===av.id?'3px solid #6366F1':'2px solid transparent'};cursor:pointer;background:${av.bg};padding:0;transform:${selAvatar===av.id?'scale(1.15)':'scale(1)'};transition:all .2s;">${av.svg}</button>`).join('')}
+          </div>
+          <div style="font-size:11px;color:#6366F1;font-weight:600;margin-top:6px;">Selected: ${curAvatar.label}</div>
+        </div>`:''} 
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          ${mode==='signup'?`<div><label style="font-size:12px;font-weight:700;color:${T.CSUB};margin-bottom:5px;display:block;">पूरा नाम</label><input id="loginName" style="${IB}" placeholder="जैसे: Rahul Kumar"></div>`:''}
+          <div><label style="font-size:12px;font-weight:700;color:${T.CSUB};margin-bottom:5px;display:block;">Email</label><input id="loginEmail" type="email" style="${IB}" placeholder="your@email.com"></div>
+          <div><label style="font-size:12px;font-weight:700;color:${T.CSUB};margin-bottom:5px;display:block;">Password</label>
+            <div style="position:relative;">
+              <input id="loginPass" type="password" style="${IB}padding-right:44px;" placeholder="कम से कम 4 characters">
+              <button onclick="togglePassVis()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;">👁️</button>
+            </div>
+          </div>
+          <div id="loginErr" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:9px 12px;font-size:13px;color:#EF4444;"></div>
+          <button onclick="handleLogin()" style="padding:13px 0;border-radius:14px;border:none;cursor:pointer;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;font-weight:800;font-size:15px;">
+            ${mode==='login'?'🚀 Login करें':'✅ Account बनाएँ'}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function attachLoginEvents() {
+  ['loginEmail','loginPass','loginName'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
+  });
+}
+
+window.setLoginMode = function(m) { state._loginMode=m; render(); };
+window.setAvatar = function(id) { state._selAvatar=id; render(); };
+window.togglePassVis = function() {
+  const p = document.getElementById('loginPass');
+  if(p) p.type = p.type==='password'?'text':'password';
+};
+window.handleLogin = function() {
+  const T = getTheme();
+  const mode = state._loginMode || 'login';
+  const email = (document.getElementById('loginEmail')||{}).value||'';
+  const pass = (document.getElementById('loginPass')||{}).value||'';
+  const name = (document.getElementById('loginName')||{}).value||'';
+  const errEl = document.getElementById('loginErr');
+  const showErr = msg => { errEl.style.display='block'; errEl.textContent='⚠️ '+msg; };
+  if (!email.trim()||!pass.trim()) { showErr('Email और Password ज़रूरी हैं।'); return; }
+  if (mode==='signup'&&!name.trim()) { showErr('नाम ज़रूरी है।'); return; }
+  if (pass.length<4) { showErr('Password कम से कम 4 characters।'); return; }
+  state.user = { name: name||email.split('@')[0], email, joined: new Date().toLocaleDateString('en-IN'), avatarId: state._selAvatar||DOODLE_AVATARS[0].id };
+  state.tab = 'dashboard';
+  render();
+};
+
+// ════ MAIN APP ════
+function renderMain(T) {
+  const stats = getStats();
+  const sorted = [...getAllDays()].sort((a,b)=>a.day-b.day);
+  const todayQ = QUOTES[new Date().getDate() % QUOTES.length];
+  const curAvatar = DOODLE_AVATARS.find(a=>a.id===(state.user.avatarId||DOODLE_AVATARS[0].id));
+  const tabs = [['dashboard','📊','Dashboard'],['syllabus','📚','Syllabus'],['rajgk','🏰','Raj GK'],['notes','📒','Notes'],['progress','📈','Progress'],['profile','👤','Profile']];
+
+  return `
+    <div class="sticky-header" style="background:${state.dark?'rgba(15,12,41,0.9)':'rgba(240,245,255,0.92)'};border-bottom:${T.BDR};padding:10px 20px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:9px;">CA</div>
+        <div>
+          <div style="font-weight:800;font-size:14px;color:${T.C};">${APP_NAME}</div>
+          <div style="font-size:11px;color:${T.CSUB};">नमस्ते, ${state.user.name.split(' ')[0]}! 👋</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div style="background:${state.dark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.07)'};border-radius:10px;padding:5px 10px;font-size:12px;font-weight:700;color:${T.C};">🔥 ${stats.streak}</div>
+        <button onclick="toggleDark()" style="width:34px;height:34px;border-radius:10px;border:${T.BDR};background:${state.dark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.07)'};font-size:15px;">${state.dark?'☀️':'🌙'}</button>
+        <button onclick="setTab('profile')" style="width:36px;height:36px;border-radius:11px;overflow:hidden;border:${state.tab==='profile'?'2px solid #6366F1':'2px solid transparent'};background:${curAvatar.bg};padding:0;">${curAvatar.svg}</button>
+      </div>
+    </div>
+    <div style="max-width:1100px;margin:0 auto;padding:18px 14px;">
+      <div style="background:${T.CARD};border:${T.BDR};border-radius:16px;padding:14px 18px;margin-bottom:18px;text-align:center;">
+        <div style="font-size:10px;color:${T.CSUB};margin-bottom:4px;letter-spacing:2px;text-transform:uppercase;">✦ Today's Quote ✦</div>
+        <div style="font-size:14px;font-weight:700;color:${T.C};margin-bottom:4px;line-height:1.5;">"${todayQ.en}"</div>
+        <div style="font-size:13px;color:#F59E0B;font-weight:600;font-style:italic;">"${todayQ.hi}"</div>
+      </div>
+      <div style="display:flex;gap:5px;margin-bottom:18px;padding:5px;border-radius:16px;background:${state.dark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.04)'};">
+        ${tabs.map(([t,emoji,label])=>`<button class="tab-btn" onclick="setTab('${t}')" style="background:${state.tab===t?'#6366F1':'transparent'};color:${state.tab===t?'#fff':T.CSUB};">${emoji} <span class="tab-label-long">${label}</span></button>`).join('')}
+      </div>
+      ${renderTabContent(T, stats, sorted, todayQ)}
+    </div>
+    <div style="text-align:center;padding:18px 0 28px;font-size:11px;color:${T.CSUB};">${APP_NAME} · 100 Days · आगे बढ़ते रहो! 🚀</div>
+  `;
+}
+
+function renderTabContent(T, stats, sorted, todayQ) {
+  switch(state.tab) {
+    case 'dashboard': return renderDashboard(T, stats, sorted);
+    case 'syllabus': return renderSyllabus(T, stats);
+    case 'rajgk': return renderRajGK(T);
+    case 'notes': return renderNotes(T);
+    case 'progress': return renderProgress(T, stats);
+    case 'profile': return renderProfile(T, stats);
+    default: return '';
+  }
+}
+
+// ════ DASHBOARD ════
+function renderDashboard(T, stats, sorted) {
+  const statCards = [
+    {label:'Days Done', value:stats.completedDays, total:stats.totalDays, color:'#6366F1', icon:'✅'},
+    {label:'Days Left', value:stats.totalDays-stats.completedDays, total:stats.totalDays, color:'#F59E0B', icon:'📅'},
+    {label:'Topics Done', value:stats.completedTopics, total:stats.totalTopics, color:'#22C55E', icon:'📝'},
+    {label:'Best Streak', value:stats.longest, color:'#EF4444', icon:'🔥'},
+  ];
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:16px;">
+      ${statCards.map(s=>`<div style="background:${T.CARD};border:${T.BDR};border-radius:16px;padding:12px 8px;text-align:center;">
+        <div style="font-size:20px;margin-bottom:3px;">${s.icon}</div>
+        <div style="font-size:24px;font-weight:800;color:${s.color};">${s.value}</div>
+        <div style="font-size:10px;color:${T.CSUB};margin-top:1px;">${s.label}</div>
+        ${s.total?`<div style="font-size:10px;color:${T.CSUB};">/ ${s.total}</div>`:''}
+      </div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      ${[{label:'Day Progress',pct:stats.overallPct,color:'#6366F1',done:stats.completedDays,total:stats.totalDays},{label:'Topic Progress',pct:stats.topicPct,color:'#22C55E',done:stats.completedTopics,total:stats.totalTopics}].map(item=>`
+        <div style="background:${T.CARD};border:${T.BDR};border-radius:16px;padding:16px 12px;display:flex;align-items:center;gap:12px;">
+          ${ringHTML(item.pct, 100, 9, item.color, '', T.C)}
+          <div><div style="font-weight:800;font-size:13px;color:${T.C};">${item.label}</div><div style="font-size:11px;color:${T.CSUB};margin-top:3px;">${item.done}/${item.total}</div></div>
+        </div>`).join('')}
+    </div>
+    <div style="background:${T.CARD};border:${T.BDR};border-radius:16px;padding:16px;margin-bottom:16px;">
+      <div style="font-weight:800;font-size:14px;color:${T.C};margin-bottom:12px;">📚 Phase Progress</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">
+        ${state.syllabus.map((subj,si)=>{
+          const keys=subj.days.flatMap(d=>d.topics.map((_,i)=>`${d.day}-${i}`));
+          const done=keys.filter(k=>state.progress[k]).length;
+          const pct=keys.length>0?Math.round((done/keys.length)*100):0;
+          return `<div onclick="setTab('syllabus');setActiveSub(${si});" style="cursor:pointer;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span style="font-size:12px;font-weight:600;color:${T.C};">${subj.emoji} ${subj.subject.length>28?subj.subject.slice(0,28)+'…':subj.subject}</span>
+              <span style="font-size:11px;font-weight:700;color:${subj.color};">${pct}%</span>
+            </div>
+            <div style="height:5px;border-radius:99px;background:rgba(255,255,255,0.08);">
+              <div class="progress-bar-inner" style="background:${subj.color};width:${pct}%;"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div style="background:${T.CARD};border:${T.BDR};border-radius:16px;padding:16px;">
+      <div style="font-weight:800;font-size:14px;color:${T.C};margin-bottom:10px;">🗓️ 100 Day Grid</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">
+        ${sorted.map(d=>{
+          const done=isDone(d.day);
+          const partial=d.topics.some((_,i)=>state.progress[`${d.day}-${i}`]);
+          const subj=state.syllabus.find(s=>s.days.some(dd=>dd.day===d.day));
+          const isRev=d.topics.some(t=>t.includes('⭐'));
+          const bg=done?(subj?.color||'#22C55E'):partial?'#F59E0B':isRev?'rgba(245,158,11,0.2)':(state.dark?'rgba(255,255,255,0.09)':'rgba(0,0,0,0.07)');
+          const color=(done||partial)?'#fff':isRev?'#F59E0B':T.CSUB;
+          return `<button class="day-grid-btn" title="Day ${d.day}: ${d.topics[0]}" onclick="setTab('syllabus')" style="background:${bg};color:${color};">${d.day}</button>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;">
+        ${[['#6366F1','Done'],['#F59E0B','Partial'],['rgba(245,158,11,0.2)','Revision'],[(state.dark?'rgba(255,255,255,0.09)':'rgba(0,0,0,0.07)'),'Pending']].map(([bg,lbl])=>`
+          <div style="display:flex;align-items:center;gap:5px;"><div style="width:10px;height:10px;border-radius:3px;background:${bg};"></div><span style="font-size:11px;color:${T.CSUB};">${lbl}</span></div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ════ SYLLABUS ════
+function renderSyllabus(T) {
+  const filteredSyl = state.search.trim()
+    ? state.syllabus.map(s=>({...s,days:s.days.map(d=>({...d,topics:d.topics.filter(t=>t.toLowerCase().includes(state.search.toLowerCase()))})).filter(d=>d.topics.length>0)})).filter(s=>s.days.length>0)
+    : (state.activeSub!==null?[state.syllabus[state.activeSub]].filter(Boolean):state.syllabus);
+
+  return `
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+      <input id="syllabusSearch" value="${state.search}" oninput="setSyllabusSearch(this.value)" placeholder="🔍 Search topics..." style="flex:1;min-width:130px;padding:8px 13px;border-radius:11px;border:${T.BDR};background:${T.INBG};color:${T.C};font-size:13px;outline:none;">
+      <button onclick="setActiveSub(null)" style="padding:7px 12px;border-radius:11px;border:${T.BDR};font-weight:700;font-size:12px;background:${state.activeSub===null&&!state.search?'#6366F1':'transparent'};color:${state.activeSub===null&&!state.search?'#fff':T.CSUB};">All</button>
+      ${state.syllabus.map((s,i)=>`<button onclick="setActiveSub(${i})" style="padding:6px 10px;border-radius:11px;font-weight:700;font-size:13px;border:${state.activeSub===i&&!state.search?`2px solid ${s.color}`:T.BDR};background:${state.activeSub===i&&!state.search?s.color+'22':'transparent'};color:${state.activeSub===i&&!state.search?s.color:T.CSUB};">${s.emoji}</button>`).join('')}
+    </div>
+    <button onclick="showAddSubjectModal()" style="width:100%;padding:12px 0;border-radius:13px;border:2px dashed rgba(99,102,241,0.5);background:rgba(99,102,241,0.07);color:#818CF8;font-weight:800;font-size:13px;margin-bottom:18px;">➕ नया Subject / Phase जोड़ें</button>
+    ${filteredSyl.map(subj=>{
+      const col=subj.color||'#6366F1';
+      return `<div style="margin-bottom:26px;">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">
+          <div style="width:12px;height:12px;border-radius:99px;background:${col};flex-shrink:0;"></div>
+          <span style="font-weight:800;font-size:16px;color:${T.C};">${subj.emoji} ${subj.subject}</span>
+          <span style="font-size:11px;color:${T.CSUB};background:${state.dark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.05)'};padding:2px 8px;border-radius:99px;">${subj.days.length} days</span>
+          <button onclick="showAddDayModal('${subj.id}')" style="margin-left:auto;padding:5px 12px;border-radius:9px;border:1px solid ${col}50;background:${col}15;color:${col};font-weight:700;font-size:11px;">+ Day Add</button>
+        </div>
+        ${subj.days.length===0?`<div style="background:${T.CARD};border:2px dashed ${col}40;border-radius:13px;padding:16px;text-align:center;color:${T.CSUB};font-size:13px;margin-bottom:8px;">कोई day नहीं। "+ Day Add" करो।</div>`:''}
+        ${[...subj.days].sort((a,b)=>a.day-b.day).map(d=>{
+          const done=isDone(d.day);
+          const dc=d.topics.filter((_,i)=>state.progress[`${d.day}-${i}`]).length;
+          const expKey=`${subj.id}_${d.day}`;
+          const expanded=state.expandedDay===expKey;
+          const hasNotes=!!(state.dayContent[expKey]?.trim());
+          const isRev=d.topics.some(t=>t.includes('⭐'));
+          const content=getContentForDay(d.day,d.topics);
+          return `<div style="background:${T.CARD};border:${done?`2px solid ${col}55`:isRev?'1.5px solid rgba(245,158,11,0.4)':T.BDR};border-radius:14px;padding:14px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:30px;height:30px;border-radius:8px;background:${isRev?'#F59E0B':col};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px;flex-shrink:0;">${isRev?'⭐':d.day}</div>
+                <div>
+                  <div style="font-weight:700;font-size:13px;color:${T.C};">Day ${d.day}${isRev?' — Revision':''}</div>
+                  <div style="font-size:11px;color:${T.CSUB};">${dc}/${d.topics.length} done</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
+                ${done?'<span style="font-size:13px;">✅</span>':''}
+                <button onclick="showNotesModal('${subj.id}',${d.day})" style="padding:4px 9px;border-radius:8px;border:1px solid ${col}40;background:${hasNotes?col+'20':'transparent'};color:${hasNotes?col:T.CSUB};font-weight:700;font-size:11px;">${hasNotes?'📝 Notes':'➕ Notes'}</button>
+                <button onclick="toggleExpand('${expKey}')" style="padding:4px 10px;border-radius:8px;border:1px solid ${col}50;background:${expanded?col:col+'15'};color:${expanded?'#fff':col};font-weight:700;font-size:11px;">${expanded?'▲ Close':'📖 Study'}</button>
+              </div>
+            </div>
+            <div style="height:3px;border-radius:99px;background:rgba(255,255,255,0.08);margin-bottom:10px;">
+              <div class="progress-bar-inner" style="background:${isRev?'#F59E0B':col};width:${d.topics.length>0?(dc/d.topics.length)*100:0}%;"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              ${d.topics.map((topic,ti)=>{
+                const checked=!!state.progress[`${d.day}-${ti}`];
+                return `<button onclick="doToggleTopic(${d.day},${ti})" style="display:flex;align-items:flex-start;gap:9px;background:none;border:none;cursor:pointer;text-align:left;padding:0;">
+                  <div style="width:19px;height:19px;border-radius:5px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;background:${checked?'#22C55E':'transparent'};border:${checked?'2px solid #22C55E':`2px solid ${state.dark?'rgba(255,255,255,0.28)':'rgba(0,0,0,0.2)'}`};transition:all .2s;">
+                    ${checked?'<span style="color:#fff;font-size:10px;font-weight:800;">✓</span>':''}
+                  </div>
+                  <span style="font-size:13px;line-height:1.45;color:${T.C};text-decoration:${checked?'line-through':'none'};opacity:${checked?.4:1};">${topic}</span>
+                </button>`;
+              }).join('')}
+            </div>
+            ${expanded?`<div style="margin-top:12px;border-top:${T.BDR};padding-top:12px;">
+              ${hasNotes?`<div style="background:${state.dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.03)'};border-radius:11px;padding:11px 13px;margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:700;color:${col};margin-bottom:5px;">📝 My Notes</div>
+                <div style="font-size:13px;color:${T.C};line-height:1.75;white-space:pre-wrap;">${state.dayContent[expKey]}</div>
+              </div>`:''}
+              ${renderStudyPanel(d.day, d.topics, col, T, expKey)}
+            </div>`:''}
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('')}`;
+}
+
+function renderStudyPanel(day, topics, color, T, expKey) {
+  const panelState = state.studyPanels[expKey] || {tab:'overview', ans:{}, submitted:false, score:0};
+  const content = getContentForDay(day, topics);
+  return `
+    <div>
+      <div style="display:flex;gap:5px;margin-bottom:12px;padding:4px;border-radius:12px;background:${state.dark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.04)'};">
+        ${[['overview','📖 Overview'],['pyqs','📝 20 MCQs']].map(([t,l])=>`<button onclick="setPanelTab('${expKey}','${t}')" style="flex:1;padding:7px 0;border-radius:9px;border:none;font-weight:700;font-size:12px;background:${panelState.tab===t?color:'transparent'};color:${panelState.tab===t?'#fff':T.CSUB};">${l}</button>`).join('')}
+      </div>
+      ${panelState.tab==='overview'?`
+        <div style="background:${color}15;border:1px solid ${color}30;border-radius:12px;padding:14px;margin-bottom:12px;">
+          <div style="font-weight:800;font-size:13px;color:${color};margin-bottom:6px;">📋 Overview</div>
+          <div style="font-size:13px;color:${T.C};line-height:1.75;">${content.overview}</div>
+        </div>
+        <div style="background:${state.dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.03)'};border-radius:12px;padding:14px;margin-bottom:12px;">
+          <div style="font-weight:800;font-size:13px;color:${color};margin-bottom:8px;">🔑 Key Points</div>
+          ${content.keyPoints.map(kp=>`<div style="display:flex;gap:8px;margin-bottom:6px;"><span style="color:${color};font-weight:800;flex-shrink:0;">→</span><span style="font-size:13px;color:${T.C};">${kp}</span></div>`).join('')}
+        </div>
+        <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:12px;">
+          <span style="font-weight:700;font-size:12px;color:#F59E0B;">🎯 Exam Tip: </span>
+          <span style="font-size:12px;color:${T.C};">${content.examTip}</span>
+        </div>`
+      :`
+        ${panelState.submitted?`
+          <div style="background:${panelState.score>=14?'rgba(34,197,94,.15)':panelState.score>=10?'rgba(245,158,11,.15)':'rgba(239,68,68,.15)'};border:1px solid ${panelState.score>=14?'#22C55E':panelState.score>=10?'#F59E0B':'#EF4444'}40;border-radius:14px;padding:14px;margin-bottom:14px;text-align:center;">
+            <div style="font-size:30px;margin-bottom:4px;">${panelState.score>=14?'🏆':panelState.score>=10?'👍':'📚'}</div>
+            <div style="font-weight:800;font-size:22px;color:${panelState.score>=14?'#22C55E':panelState.score>=10?'#F59E0B':'#EF4444'};">${panelState.score} / 20</div>
+            <div style="color:${T.CSUB};margin-top:4px;font-size:13px;">${panelState.score>=14?'शानदार! 🔥':panelState.score>=10?'अच्छा! और practice करो 💪':'और मेहनत करो 📖'}</div>
+            <button onclick="resetPanelQuiz('${expKey}')" style="margin-top:10px;padding:7px 18px;border-radius:9px;border:none;background:${color};color:#fff;font-weight:700;font-size:12px;">🔄 फिर से दो</button>
+          </div>`:''}
+        ${content.pyqs.map((q,qi)=>{
+          const sel=panelState.ans[qi];
+          const isCo=panelState.submitted&&sel===q.ans;
+          const isWrong=panelState.submitted&&sel&&sel!==q.ans;
+          return `<div style="background:${T.CARD};border:${panelState.submitted?(isCo?'1.5px solid #22C55E40':isWrong?'1.5px solid #EF444440':T.BDR):T.BDR};border-radius:12px;padding:14px;margin-bottom:10px;">
+            <div style="font-weight:700;font-size:13px;color:${T.C};margin-bottom:9px;line-height:1.5;"><span style="color:${color};font-weight:800;">Q${qi+1}. </span>${q.q}</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              ${q.opts.map(opt=>{
+                const letter=opt[0];
+                const isSel=sel===letter;
+                const isCO=letter===q.ans;
+                let bg='transparent',bdr=T.BDR,tc=T.C;
+                if(panelState.submitted){if(isCO){bg='rgba(34,197,94,.12)';bdr='1px solid #22C55E50';tc='#22C55E';}else if(isSel){bg='rgba(239,68,68,.1)';bdr='1px solid #EF444440';tc='#EF4444';}}
+                else if(isSel){bg=color+'18';bdr=`1.5px solid ${color}60`;tc=color;}
+                return `<button class="opt-btn" onclick="selectPanelAns('${expKey}',${qi},'${letter}')" style="border:${bdr};background:${bg};cursor:${panelState.submitted?'default':'pointer'};">
+                  <span style="font-weight:800;color:${tc};flex-shrink:0;font-size:12px;">${letter})</span>
+                  <span style="font-size:12px;color:${tc};line-height:1.4;">${opt.slice(3)}</span>
+                  ${panelState.submitted&&isCO?'<span style="margin-left:auto;flex-shrink:0;font-size:12px;">✅</span>':''}
+                  ${panelState.submitted&&isSel&&!isCO?'<span style="margin-left:auto;flex-shrink:0;font-size:12px;">❌</span>':''}
+                </button>`;
+              }).join('')}
+            </div>
+            ${panelState.submitted&&q.exp?`<div style="margin-top:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:9px;padding:8px 10px;">
+              <span style="font-weight:700;color:#F59E0B;font-size:11px;">💡 </span>
+              <span style="font-size:11px;color:${T.C};">${q.exp}</span>
+            </div>`:''}
+          </div>`;
+        }).join('')}
+        ${!panelState.submitted?`<button onclick="submitPanelQuiz('${expKey}')" ${Object.keys(panelState.ans).length===0?'disabled':''} style="width:100%;padding:12px;border-radius:12px;border:none;background:${color};color:#fff;font-weight:800;font-size:14px;margin-top:4px;opacity:${Object.keys(panelState.ans).length===0?.5:1};">✅ Submit (${Object.keys(panelState.ans).length}/20)</button>`:''}
+      `}
+    </div>`;
+}
+
+// ════ RAJ GK ════
+function renderRajGK(T) {
+  const gk = state.rajGK;
+  const sec = RAJ_GK_SECTIONS[gk.activeSection];
+  const q = gk.showAll&&gk.allQidx!==null ? sec.questions[gk.allQidx] : sec.questions[gk.qIdx];
+
+  const optColor = (opt) => {
+    if(!gk.selected) return {bg:'transparent',border:T.BDR,color:T.C};
+    const isCorrect=opt.startsWith(q.ans);
+    const isSelected=opt===gk.selected;
+    if(isCorrect) return {bg:'rgba(34,197,94,0.18)',border:'1.5px solid #22C55E',color:'#22C55E'};
+    if(isSelected&&!isCorrect) return {bg:'rgba(239,68,68,0.15)',border:'1.5px solid #EF4444',color:'#EF4444'};
+    return {bg:'transparent',border:T.BDR,color:T.CSUB};
+  };
+
+  return `
+    <div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        ${RAJ_GK_SECTIONS.map((s,i)=>`<button onclick="setRajGKSection(${i})" style="flex:1;min-width:100px;padding:10px 8px;border-radius:13px;border:${gk.activeSection===i?`2px solid ${s.color}`:T.BDR};background:${gk.activeSection===i?s.color+'22':'transparent'};color:${gk.activeSection===i?s.color:T.CSUB};font-weight:800;font-size:12px;">${s.emoji} ${s.title}</button>`).join('')}
+      </div>
+      <div style="background:${T.CARD};border:${T.BDR};border-radius:16px;padding:14px 18px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div style="font-weight:800;font-size:16px;color:${sec.color};">${sec.emoji} ${sec.title}</div>
+            <div style="font-size:12px;color:${T.CSUB};margin-top:2px;">${sec.desc} • ${sec.questions.length} PYQs</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="startRajGKQuiz()" style="padding:8px 16px;border-radius:11px;border:none;background:${sec.color};color:#fff;font-weight:800;font-size:12px;">🎯 Quiz Mode</button>
+            <button onclick="showAllRajGK()" style="padding:8px 16px;border-radius:11px;border:${T.BDR};background:transparent;color:${T.CSUB};font-weight:700;font-size:12px;">📋 All Q's</button>
+          </div>
+        </div>
+        ${gk.quizMode&&!gk.finished?`<div style="margin-top:10px;display:flex;gap:10px;align-items:center;">
+          <div style="flex:1;height:6px;border-radius:99px;background:rgba(255,255,255,0.1);">
+            <div style="height:6px;border-radius:99px;background:${sec.color};width:${(gk.qIdx/sec.questions.length)*100}%;transition:width .4s;"></div>
+          </div>
+          <span style="font-size:11px;color:${T.CSUB};white-space:nowrap;">${gk.qIdx+1}/${sec.questions.length}</span>
+          <span style="font-size:12px;font-weight:700;color:#22C55E;">✅ ${gk.score}</span>
+        </div>`:''}
+      </div>
+      ${gk.finished?`
+        <div style="background:${T.CARD};border:${T.BDR};border-radius:18px;padding:28px;text-align:center;">
+          <div style="font-size:48px;margin-bottom:10px;">${gk.score>=sec.questions.length*.8?'🏆':gk.score>=sec.questions.length*.5?'👍':'📚'}</div>
+          <div style="font-weight:800;font-size:22px;color:${sec.color};margin-bottom:6px;">Quiz Complete!</div>
+          <div style="font-size:32px;font-weight:900;color:${T.C};margin-bottom:4px;">${gk.score}/${sec.questions.length}</div>
+          <div style="font-size:14px;color:${T.CSUB};margin-bottom:18px;">${Math.round((gk.score/sec.questions.length)*100)}% सही</div>
+          <button onclick="resetRajGKSection(${gk.activeSection})" style="padding:11px 28px;border-radius:13px;border:none;background:${sec.color};color:#fff;font-weight:800;font-size:14px;">🔄 फिर से</button>
+        </div>`:''
+      }
+      ${gk.showAll&&gk.allQidx!==null&&!gk.finished?`
+        <div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px;">
+            ${sec.questions.map((_,i)=>`<button onclick="setRajGKAllQ(${i})" style="min-width:32px;height:32px;border-radius:8px;border:${i===gk.allQidx?`2px solid ${sec.color}`:T.BDR};background:${i===gk.allQidx?sec.color+'33':'transparent'};color:${i===gk.allQidx?sec.color:T.CSUB};font-weight:700;font-size:11px;">${i+1}</button>`).join('')}
+          </div>
+          ${renderQCard(q, gk.selected, optColor, sec.color, T, gk.allQidx, sec.questions.length)}
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <button onclick="prevRajGKQ()" ${gk.allQidx===0?'disabled':''} style="flex:1;padding:11px 0;border-radius:12px;border:${T.BDR};background:transparent;color:${T.CSUB};font-weight:700;opacity:${gk.allQidx===0?.4:1};">← Prev</button>
+            <button onclick="nextRajGKQ()" ${gk.allQidx===sec.questions.length-1?'disabled':''} style="flex:1;padding:11px 0;border-radius:12px;border:none;background:${sec.color};color:#fff;font-weight:800;opacity:${gk.allQidx===sec.questions.length-1?.4:1};">Next →</button>
+          </div>
+        </div>`:''}
+      ${gk.quizMode&&!gk.finished&&!gk.showAll?`
+        <div>
+          ${renderQCard(q, gk.selected, optColor, sec.color, T, gk.qIdx, sec.questions.length)}
+          ${gk.selected?`<button onclick="nextRajGKQuizQ()" style="width:100%;margin-top:14px;padding:13px 0;border-radius:14px;border:none;background:${sec.color};color:#fff;font-weight:800;font-size:15px;">${gk.qIdx+1<sec.questions.length?'Next Question →':'🏁 Finish Quiz'}</button>`:''}
+        </div>`:''}
+      ${!gk.quizMode&&!gk.showAll&&!gk.finished?`
+        <div style="background:${T.CARD};border:1.5px solid ${sec.color}44;border-radius:16px;padding:20px;text-align:center;">
+          <div style="font-size:38px;margin-bottom:8px;">${sec.emoji}</div>
+          <div style="font-weight:800;font-size:16px;color:${T.C};margin-bottom:6px;">${sec.questions.length} Previous Year Questions</div>
+          <div style="font-size:13px;color:${T.CSUB};margin-bottom:18px;">Quiz Mode में questions आएंगे। All Q's में सभी browse करें।</div>
+          <div style="display:flex;gap:10px;">
+            <button onclick="startRajGKQuiz()" style="flex:1;padding:12px 0;border-radius:13px;border:none;background:${sec.color};color:#fff;font-weight:800;font-size:14px;">🎯 Quiz Start करें</button>
+            <button onclick="showAllRajGK()" style="flex:1;padding:12px 0;border-radius:13px;border:1.5px solid ${sec.color};background:transparent;color:${sec.color};font-weight:800;font-size:14px;">📋 सभी देखें</button>
+          </div>
+        </div>`:''}
+    </div>`;
+}
+
+function renderQCard(q, selected, optColor, secColor, T, idx, total) {
+  return `<div style="background:${T.CARD};border:${T.BDR};border-radius:18px;padding:20px 18px;">
+    <div style="font-size:11px;color:${T.CSUB};margin-bottom:8px;font-weight:600;">Q${idx+1} of ${total}</div>
+    <div style="font-weight:700;font-size:15px;color:${T.C};margin-bottom:16px;line-height:1.6;">${q.q}</div>
+    <div style="display:flex;flex-direction:column;gap:9px;">
+      ${q.opts.map(opt=>{
+        const st=optColor(opt);
+        return `<button onclick="answerRajGK('${opt.replace(/'/g,"\\'")}',${idx})" style="padding:11px 14px;border-radius:12px;border:${st.border};background:${st.bg};color:${st.color};font-weight:600;font-size:13px;text-align:left;cursor:${selected?'default':'pointer'};transition:all .15s;">${opt}</button>`;
+      }).join('')}
+    </div>
+    ${selected?`<div style="margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);">
+      <span style="font-weight:700;font-size:12px;color:${secColor};">💡 Explanation: </span>
+      <span style="font-size:13px;color:${T.C};">${q.exp}</span>
+    </div>`:''}
+  </div>`;
+}
+
+// ════ NOTES ════
+function renderNotes(T) {
+  const IB=`width:100%;padding:10px 14px;border-radius:12px;border:${T.BDR};background:${T.INBG};color:${T.C};font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;`;
+  const filtered = state.notes
+    .filter(n=>!state.noteSearch || n.title.toLowerCase().includes((state.noteSearch||'').toLowerCase())||n.body.toLowerCase().includes((state.noteSearch||'').toLowerCase()))
+    .sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0));
+  const editing = state._editingNote;
+  return `
+    <div>
+      <div style="background:${T.CARD};border:${T.BDR};border-radius:20px;padding:20px;margin-bottom:20px;">
+        <div style="font-weight:800;font-size:16px;color:${T.C};margin-bottom:14px;">${editing!==undefined?'✏️ Edit Note':'📝 New Note'}</div>
+        <input id="noteTitle" value="${editing!==undefined?(state.notes[editing]?.title||''):(state._noteTitle||'')}" placeholder="Title..." style="${IB}margin-bottom:10px;">
+        <textarea id="noteBody" rows="4" placeholder="Notes, formulas, concepts..." style="${IB}resize:vertical;margin-bottom:12px;">${editing!==undefined?(state.notes[editing]?.body||''):(state._noteBody||'')}</textarea>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;">
+          ${Object.entries(TAG_COLORS).map(([t,col])=>`<button onclick="setNoteTag('${t}')" style="padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;border:${(state._noteTag||'📌 Important')===t?`2px solid ${col}`:'2px solid transparent'};background:${(state._noteTag||'📌 Important')===t?col+'22':(state.dark?'rgba(255,255,255,0.07)':'#f0f0f0')};color:${(state._noteTag||'📌 Important')===t?col:T.CSUB};">${t}</button>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="saveNote()" style="flex:1;padding:11px 0;border-radius:12px;border:none;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;font-weight:800;font-size:14px;">${editing!==undefined?'💾 Update':'➕ Save'}</button>
+          ${editing!==undefined?`<button onclick="cancelEditNote()" style="padding:11px 16px;border-radius:12px;border:${T.BDR};background:transparent;color:${T.CSUB};font-weight:700;">Cancel</button>`:''}
+        </div>
+      </div>
+      ${state.notes.length>2?`<input value="${state.noteSearch||''}" oninput="setNoteSearch(this.value)" placeholder="🔍 Search notes..." style="${IB}margin-bottom:14px;">`:''}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;">
+        ${filtered.map(note=>{
+          const oi=state.notes.findIndex(n=>n.id===note.id);
+          const tc=TAG_COLORS[note.tag]||'#6366F1';
+          return `<div style="background:${T.CARD};border:${note.pinned?`2px solid ${tc}50`:T.BDR};border-radius:16px;padding:16px;position:relative;">
+            ${note.pinned?`<div style="position:absolute;top:10px;right:10px;">📌</div>`:''}
+            <div style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${tc}20;color:${tc};margin-bottom:10px;">${note.tag}</div>
+            <div style="font-weight:800;font-size:15px;color:${T.C};margin-bottom:6px;">${note.title}</div>
+            <div style="font-size:13px;color:${state.dark?'rgba(255,255,255,0.8)':'#333'};line-height:1.65;white-space:pre-wrap;margin-bottom:14px;">${note.body}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:11px;color:${T.CSUB};">${note.date}</span>
+              <div style="display:flex;gap:6px;">
+                <button onclick="pinNote(${oi})" style="padding:4px 8px;border-radius:8px;border:${T.BDR};background:transparent;font-size:13px;">${note.pinned?'📍':'📌'}</button>
+                <button onclick="editNote(${oi})" style="padding:4px 8px;border-radius:8px;border:${T.BDR};background:transparent;font-size:13px;">✏️</button>
+                <button onclick="deleteNote(${oi})" style="padding:4px 8px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:transparent;font-size:13px;color:#EF4444;">🗑️</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${state.notes.length===0?`<div style="text-align:center;padding:40px 20px;color:${T.CSUB};"><div style="font-size:46px;margin-bottom:10px;">📒</div><div style="font-weight:700;font-size:16px;color:${T.C};">Notes खाली है!</div></div>`:''}
+    </div>`;
+}
+
+// ════ PROGRESS ════
+function renderProgress(T, stats) {
+  return `
+    <div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px;">
+        ${[{label:'Overall',value:stats.overallPct,color:'#6366F1',icon:'🎯'},{label:'Topics',value:stats.topicPct,color:'#22C55E',icon:'📝'},{label:'Best Streak',value:Math.round((stats.longest/Math.max(stats.totalDays,1))*100),color:'#F59E0B',icon:'🔥',sub:`${stats.longest} days`}].map(item=>`
+          <div style="background:${T.CARD};border:${T.BDR};border-radius:16px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:7px;">
+            <div style="font-size:22px;">${item.icon}</div>
+            ${ringHTML(item.value,85,8,item.color,item.sub||'',T.C)}
+            <div style="font-weight:700;font-size:12px;text-align:center;color:${T.C};">${item.label}</div>
+          </div>`).join('')}
+      </div>
+      <div style="background:${T.CARD};border:${T.BDR};border-radius:16px;padding:18px;">
+        <div style="font-weight:800;font-size:14px;color:${T.C};margin-bottom:12px;">📊 Phase Breakdown</div>
+        ${state.syllabus.map(subj=>{
+          const keys=subj.days.flatMap(d=>d.topics.map((_,i)=>`${d.day}-${i}`));
+          const done=keys.filter(k=>state.progress[k]).length;
+          const pct=keys.length>0?Math.round((done/keys.length)*100):0;
+          return `<div style="margin-bottom:13px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span style="font-size:12px;font-weight:600;color:${T.C};">${subj.emoji} ${subj.subject.length>34?subj.subject.slice(0,34)+'…':subj.subject}</span>
+              <span style="font-size:12px;font-weight:700;color:${subj.color};">${pct}%</span>
+            </div>
+            <div style="height:6px;border-radius:99px;background:rgba(255,255,255,0.08);">
+              <div class="progress-bar-inner" style="background:${subj.color};width:${pct}%;"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+// ════ PROFILE ════
+function renderProfile(T, stats) {
+  const curAvatar = DOODLE_AVATARS.find(a=>a.id===(state.user.avatarId||DOODLE_AVATARS[0].id));
+  const badges = [
+    {icon:'🌱',label:'First Step',u:stats.completedDays>=1},
+    {icon:'⚡',label:'Week Warrior',u:stats.completedDays>=7},
+    {icon:'🔥',label:'On Fire',u:stats.streak>=3},
+    {icon:'💎',label:'Halfway',u:stats.completedDays>=50},
+    {icon:'🚀',label:'Topic Master',u:stats.completedTopics>=50},
+    {icon:'🎓',label:'Champion',u:stats.completedDays===100}
+  ];
+  const editing = state._editingProfile;
+  const IB=`width:100%;padding:11px 14px;border-radius:12px;border:${T.BDR};background:${T.INBG};color:${T.C};font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;`;
+  return `
+    <div>
+      <div style="background:${T.CARD};border:${T.BDR};border-radius:22px;padding:22px 20px;margin-bottom:14px;text-align:center;">
+        <div style="width:80px;height:80px;border-radius:22px;overflow:hidden;margin:0 auto 12px;background:${curAvatar.bg};box-shadow:0 4px 20px rgba(0,0,0,0.3);">${curAvatar.svg}</div>
+        <div style="font-weight:800;font-size:20px;color:${T.C};margin-bottom:3px;">${state.user.name}</div>
+        <div style="font-size:13px;color:${T.CSUB};margin-bottom:3px;">${state.user.email}</div>
+        <div style="font-size:12px;color:${T.CSUB};">${state.user.goal||'Computer Anudeshak Exam 2025 🎯'}</div>
+        <div style="font-size:11px;color:#6366F1;margin-top:4px;font-weight:600;">${curAvatar.label}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+        ${[{icon:'📅',val:stats.completedDays,label:'Days'},{icon:'📝',val:stats.completedTopics,label:'Topics'},{icon:'🔥',val:stats.streak,label:'Streak'},{icon:'🏆',val:stats.longest,label:'Best'}].map(s=>`
+          <div style="background:${T.CARD};border:${T.BDR};border-radius:14px;padding:12px 6px;text-align:center;">
+            <div style="font-size:18px;margin-bottom:3px;">${s.icon}</div>
+            <div style="font-weight:800;font-size:18px;color:${T.C};">${s.val}</div>
+            <div style="font-size:10px;color:${T.CSUB};">${s.label}</div>
+          </div>`).join('')}
+      </div>
+      <div style="background:${T.CARD};border:${T.BDR};border-radius:16px;padding:16px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;${editing?'margin-bottom:14px;':''}">
+          <span style="font-weight:800;font-size:14px;color:${T.C};">✏️ Profile Edit</span>
+          <button onclick="toggleProfileEdit()" style="padding:5px 12px;border-radius:9px;border:${T.BDR};background:transparent;color:${T.CSUB};font-weight:700;font-size:12px;">${editing?'Cancel':'Edit'}</button>
+        </div>
+        ${editing?`<div style="display:flex;flex-direction:column;gap:10px;">
+          <input id="profileName" value="${state.user.name}" style="${IB}" placeholder="नाम">
+          <input id="profileGoal" value="${state.user.goal||''}" style="${IB}" placeholder="Goal / Exam Target">
+          <div>
+            <label style="font-size:12px;font-weight:700;color:${T.CSUB};margin-bottom:8px;display:block;">🐾 Avatar बदलो</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              ${DOODLE_AVATARS.map(av=>`<button onclick="setProfileAvatar('${av.id}')" title="${av.label}" style="width:44px;height:44px;border-radius:12px;overflow:hidden;border:${(state._profileAvatar||state.user.avatarId)===av.id?'3px solid #6366F1':'2px solid transparent'};background:${av.bg};padding:0;transform:${(state._profileAvatar||state.user.avatarId)===av.id?'scale(1.15)':'scale(1)'};transition:all .2s;">${av.svg}</button>`).join('')}
+            </div>
+          </div>
+          <button onclick="saveProfile()" style="padding:10px 0;border-radius:11px;border:none;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;font-weight:800;">💾 Save</button>
+        </div>`:''}
+        ${state._profileMsg?`<div style="margin-top:10px;font-size:13px;color:#22C55E;font-weight:700;">${state._profileMsg}</div>`:''}
+      </div>
+      <div style="background:${T.CARD};border:${T.BDR};border-radius:16px;padding:16px;margin-bottom:14px;">
+        <div style="font-weight:800;font-size:14px;color:${T.C};margin-bottom:12px;">🏆 Badges</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;">
+          ${badges.map(b=>`<div style="border-radius:12px;padding:12px 8px;text-align:center;background:${b.u?'rgba(99,102,241,0.13)':'transparent'};border:${b.u?'1.5px solid rgba(99,102,241,0.35)':T.BDR};opacity:${b.u?1:.45};">
+            <div style="font-size:24px;margin-bottom:4px;">${b.icon}</div>
+            <div style="font-size:11px;font-weight:800;color:${T.C};">${b.label}</div>
+            ${b.u?`<div style="font-size:10px;color:#22C55E;font-weight:800;margin-top:2px;">✓</div>`:''}
+          </div>`).join('')}
+        </div>
+      </div>
+      <button onclick="doLogout()" style="width:100%;padding:13px 0;border-radius:14px;border:1.5px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.08);color:#EF4444;font-weight:800;font-size:15px;">🚪 Logout</button>
+    </div>`;
+}
+
+// ════ MODAL RENDERING ════
+function showAddSubjectModal() {
+  const T = getTheme();
+  state._addSubEmoji = '📚'; state._addSubColor = '#6366F1';
+  const IB=`width:100%;padding:10px 14px;border-radius:12px;border:${T.BDR};background:${T.INBG};color:${T.C};font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;`;
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box" style="background:${state.dark?'#1a1040':'#fff'};border:${T.BDR};">
+        <div style="font-weight:800;font-size:18px;color:${T.C};margin-bottom:18px;">➕ नया Subject जोड़ें</div>
+        <div style="margin-bottom:12px;"><label style="font-size:12px;font-weight:700;color:${T.CSUB};margin-bottom:5px;display:block;">Subject Name *</label><input id="addSubName" style="${IB}" placeholder="जैसे: Mathematics..."></div>
+        <div style="margin-bottom:12px;"><label style="font-size:12px;font-weight:700;color:${T.CSUB};margin-bottom:8px;display:block;">Emoji</label><div style="display:flex;flex-wrap:wrap;gap:6px;" id="emojiPicker">${EMOJI_LIST.map(e=>`<button onclick="setAddSubEmoji('${e}')" style="width:34px;height:34px;border-radius:8px;border:${state._addSubEmoji===e?`2px solid ${state._addSubColor}`:T.BDR};background:${state._addSubEmoji===e?state._addSubColor+'22':'transparent'};">${e}</button>`).join('')}</div></div>
+        <div style="margin-bottom:18px;"><label style="font-size:12px;font-weight:700;color:${T.CSUB};margin-bottom:8px;display:block;">Color</label><div style="display:flex;flex-wrap:wrap;gap:6px;">${COLOR_LIST.map(col=>`<button onclick="setAddSubColor('${col}')" style="width:28px;height:28px;border-radius:7px;border:${state._addSubColor===col?'3px solid white':'2px solid transparent'};background:${col};"></button>`).join('')}</div></div>
+        <div id="addSubErr" style="display:none;color:#EF4444;font-size:13px;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:10px;">
+          <button onclick="closeModal()" style="flex:1;padding:11px 0;border-radius:12px;border:${T.BDR};background:transparent;color:${T.CSUB};font-weight:700;">Cancel</button>
+          <button onclick="doAddSubject()" style="flex:2;padding:11px 0;border-radius:12px;border:none;background:${state._addSubColor};color:#fff;font-weight:800;">✅ Add करें</button>
+        </div>
+      </div>
+    </div>`;
+}
+window.showAddSubjectModal = showAddSubjectModal;
+
+function showAddDayModal(subjectId) {
+  const T = getTheme();
+  const subj = state.syllabus.find(s=>s.id===subjectId);
+  const nextDay = getNextDay();
+  state._addDaySubId = subjectId;
+  state._addDayTopics = [''];
+  const IB=`width:100%;padding:10px 14px;border-radius:12px;border:${T.BDR};background:${T.INBG};color:${T.C};font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;`;
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box" style="background:${state.dark?'#1a1040':'#fff'};border:${T.BDR};">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+          <div style="width:34px;height:34px;border-radius:9px;background:${subj?.color||'#6366F1'};display:flex;align-items:center;justify-content:center;font-size:17px;">${subj?.emoji}</div>
+          <div style="font-weight:800;font-size:16px;color:${T.C};">नया Day — ${subj?.subject}</div>
+        </div>
+        <div style="margin-bottom:12px;"><label style="font-size:12px;font-weight:700;color:${T.CSUB};margin-bottom:5px;display:block;">Day Number</label><input id="addDayNum" type="number" value="${nextDay}" style="${IB}width:110px;" min="1"><div style="font-size:11px;color:${T.CSUB};margin-top:3px;">Suggested: Day ${nextDay}</div></div>
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <label style="font-size:12px;font-weight:700;color:${T.CSUB};">Topics</label>
+            <button onclick="addTopicField()" style="padding:4px 11px;border-radius:8px;border:1px solid ${subj?.color||'#6366F1'}50;background:${subj?.color||'#6366F1'}15;color:${subj?.color||'#6366F1'};font-weight:700;font-size:12px;">+ Topic</button>
+          </div>
+          <div id="topicsContainer">${renderTopicFields(T)}</div>
+        </div>
+        <div id="addDayErr" style="display:none;color:#EF4444;font-size:13px;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:10px;">
+          <button onclick="closeModal()" style="flex:1;padding:11px 0;border-radius:12px;border:${T.BDR};background:transparent;color:${T.CSUB};font-weight:700;">Cancel</button>
+          <button onclick="doAddDay()" style="flex:2;padding:11px 0;border-radius:12px;border:none;background:${subj?.color||'#6366F1'};color:#fff;font-weight:800;">✅ Day Add करें</button>
+        </div>
+      </div>
+    </div>`;
+}
+window.showAddDayModal = showAddDayModal;
+
+function renderTopicFields(T) {
+  const IB=`padding:10px 14px;border-radius:12px;border:${T.BDR};background:${T.INBG};color:${T.C};font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;flex:1;`;
+  return (state._addDayTopics||['']).map((t,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px;"><input value="${t}" oninput="updateTopicField(${i},this.value)" placeholder="Topic ${i+1}..." style="${IB}"><button onclick="removeTopicField(${i})" style="padding:8px 10px;border-radius:9px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.1);color:#EF4444;">✕</button></div>`).join('');
+}
+
+function showNotesModal(subjectId, day) {
+  const T = getTheme();
+  const subj = state.syllabus.find(s=>s.id===subjectId);
+  const col = subj?.color||'#6366F1';
+  const key = `${subjectId}_${day}`;
+  const existing = state.dayContent[key]||'';
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box" style="background:${state.dark?'#1a1040':'#fff'};border:${T.BDR};">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="width:34px;height:34px;border-radius:9px;background:${col};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;">${day}</div>
+          <div><div style="font-weight:800;font-size:16px;color:${T.C};">Day ${day} — My Notes</div><div style="font-size:12px;color:${T.CSUB};">${subj?.emoji} ${subj?.subject}</div></div>
+        </div>
+        <textarea id="notesModalText" rows="12" placeholder="Day ${day} के notes यहाँ लिखो..." style="width:100%;padding:12px 14px;border-radius:14px;border:${T.BDR};background:${T.INBG};color:${T.C};font-size:13px;outline:none;resize:vertical;font-family:inherit;line-height:1.7;box-sizing:border-box;margin-bottom:8px;">${existing}</textarea>
+        <div id="notesCharCount" style="font-size:11px;color:${T.CSUB};text-align:right;margin-bottom:12px;">${existing.length} chars</div>
+        <div style="display:flex;gap:10px;">
+          <button onclick="closeModal()" style="flex:1;padding:11px 0;border-radius:12px;border:${T.BDR};background:transparent;color:${T.CSUB};font-weight:700;">Cancel</button>
+          <button onclick="saveNotesModal('${key}')" style="flex:2;padding:11px 0;border-radius:12px;border:none;background:${col};color:#fff;font-weight:800;">💾 Save Notes</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('notesModalText').addEventListener('input', function() {
+    document.getElementById('notesCharCount').textContent = this.value.length + ' chars';
+  });
+}
+window.showNotesModal = showNotesModal;
+
+window.closeModal = function() {
+  document.getElementById('modalContainer').innerHTML = '';
+};
+
+// ════════════════════════════════════════════
+// EVENT HANDLERS (window.*)
+// ════════════════════════════════════════════
+window.toggleDark = function() { state.dark=!state.dark; render(); };
+window.setTab = function(t) { state.tab=t; render(); };
+window.setActiveSub = function(i) { state.activeSub=i; render(); };
+window.setSyllabusSearch = function(v) { state.search=v; state.activeSub=null; render(); };
+
+window.doToggleTopic = function(day, ti) {
+  const key=`${day}-${ti}`;
+  const np={...state.progress,[key]:!state.progress[key]};
+  const allDays=getAllDays();
+  const d=allDays.find(x=>x.day===day);
+  const wasComplete=d&&d.topics.every((_,i)=>state.progress[`${day}-${i}`]);
+  state.progress=np;
+  const isNowComplete=d&&d.topics.every((_,i)=>np[`${day}-${i}`]);
+  if(isNowComplete&&!wasComplete) showCelebration(day);
+  render();
+};
+
+window.toggleExpand = function(expKey) {
+  state.expandedDay = state.expandedDay===expKey?null:expKey;
+  render();
+};
+
+window.setPanelTab = function(expKey,tab) {
+  if(!state.studyPanels[expKey]) state.studyPanels[expKey]={tab:'overview',ans:{},submitted:false,score:0};
+  state.studyPanels[expKey].tab=tab;
+  render();
+};
+
+window.selectPanelAns = function(expKey,qi,letter) {
+  if(!state.studyPanels[expKey]) state.studyPanels[expKey]={tab:'pyqs',ans:{},submitted:false,score:0};
+  if(state.studyPanels[expKey].submitted) return;
+  state.studyPanels[expKey].ans[qi]=letter;
+  render();
+};
+
+window.submitPanelQuiz = function(expKey) {
+  const panel=state.studyPanels[expKey]||{ans:{}};
+  const expKeyParts=expKey.split('_');
+  const day=parseInt(expKeyParts[expKeyParts.length-1]);
+  const subj=state.syllabus.find(s=>s.days.some(d=>d.day===day));
+  const d=subj?.days.find(dd=>dd.day===day);
+  const content=getContentForDay(day,d?.topics||[]);
+  let s=0;
+  content.pyqs.forEach((q,i)=>{if(panel.ans[i]===q.ans)s++;});
+  state.studyPanels[expKey]={...panel,submitted:true,score:s};
+  render();
+};
+
+window.resetPanelQuiz = function(expKey) {
+  state.studyPanels[expKey]={tab:'pyqs',ans:{},submitted:false,score:0};
+  render();
+};
+
+// Raj GK events
+window.setRajGKSection = function(i) {
+  state.rajGK={activeSection:i,qIdx:0,selected:null,score:0,answered:0,quizMode:false,finished:false,showAll:false,allQidx:null};
+  render();
+};
+window.resetRajGKSection = function(i) { window.setRajGKSection(i); };
+window.startRajGKQuiz = function() {
+  state.rajGK={...state.rajGK,quizMode:true,qIdx:0,selected:null,score:0,answered:0,finished:false,showAll:false};
+  render();
+};
+window.showAllRajGK = function() {
+  state.rajGK={...state.rajGK,showAll:true,allQidx:0,quizMode:false,selected:null};
+  render();
+};
+window.answerRajGK = function(opt,idx) {
+  if(state.rajGK.selected) return;
+  const sec=RAJ_GK_SECTIONS[state.rajGK.activeSection];
+  const q=state.rajGK.showAll?sec.questions[state.rajGK.allQidx]:sec.questions[state.rajGK.qIdx];
+  const correct=opt.startsWith(q.ans);
+  state.rajGK={...state.rajGK,selected:opt,answered:state.rajGK.answered+1,score:state.rajGK.score+(correct?1:0)};
+  render();
+};
+window.nextRajGKQuizQ = function() {
+  const sec=RAJ_GK_SECTIONS[state.rajGK.activeSection];
+  const nextIdx=state.rajGK.qIdx+1;
+  if(nextIdx>=sec.questions.length){state.rajGK={...state.rajGK,finished:true};render();return;}
+  state.rajGK={...state.rajGK,qIdx:nextIdx,selected:null};
+  render();
+};
+window.setRajGKAllQ = function(i) {
+  state.rajGK={...state.rajGK,allQidx:i,selected:null};
+  render();
+};
+window.prevRajGKQ = function() {
+  if(state.rajGK.allQidx>0) state.rajGK={...state.rajGK,allQidx:state.rajGK.allQidx-1,selected:null};
+  render();
+};
+window.nextRajGKQ = function() {
+  const sec=RAJ_GK_SECTIONS[state.rajGK.activeSection];
+  if(state.rajGK.allQidx<sec.questions.length-1) state.rajGK={...state.rajGK,allQidx:state.rajGK.allQidx+1,selected:null};
+  render();
+};
+
+// Notes events
+window.setNoteTag = function(t) { state._noteTag=t; render(); };
+window.setNoteSearch = function(v) { state.noteSearch=v; render(); };
+window.saveNote = function() {
+  const title=document.getElementById('noteTitle')?.value||'';
+  const body=document.getElementById('noteBody')?.value||'';
+  if(!body.trim()) return;
+  const tag=state._noteTag||'📌 Important';
+  const editing=state._editingNote;
+  if(editing!==undefined) {
+    state.notes=state.notes.map((n,i)=>i===editing?{...n,title:title||'Untitled',body,tag}:n);
+    state._editingNote=undefined;
+  } else {
+    state.notes=[{id:Date.now(),title:title||'Untitled',body,tag,date:new Date().toLocaleDateString('en-IN'),pinned:false},...state.notes];
+  }
+  state._noteTitle=''; state._noteBody=''; state._noteTag='📌 Important';
+  render();
+};
+window.cancelEditNote = function() { state._editingNote=undefined; render(); };
+window.editNote = function(i) { state._editingNote=i; state._noteTag=state.notes[i]?.tag||'📌 Important'; render(); };
+window.deleteNote = function(i) { state.notes=state.notes.filter((_,j)=>j!==i); render(); };
+window.pinNote = function(i) { state.notes=state.notes.map((n,j)=>j===i?{...n,pinned:!n.pinned}:n); render(); };
+
+// Profile events
+window.toggleProfileEdit = function() { state._editingProfile=!state._editingProfile; state._profileMsg=''; render(); };
+window.setProfileAvatar = function(id) { state._profileAvatar=id; render(); };
+window.saveProfile = function() {
+  const name=document.getElementById('profileName')?.value||state.user.name;
+  const goal=document.getElementById('profileGoal')?.value||'';
+  state.user={...state.user,name,goal,avatarId:state._profileAvatar||state.user.avatarId};
+  state._editingProfile=false;
+  state._profileMsg='✅ Updated!';
+  setTimeout(()=>{state._profileMsg='';render();},2500);
+  render();
+};
+window.doLogout = function() { state.user=null; state.tab='dashboard'; render(); };
+
+// Add subject/day modal events
+window.setAddSubEmoji = function(e) { state._addSubEmoji=e; showAddSubjectModal(); };
+window.setAddSubColor = function(c) { state._addSubColor=c; showAddSubjectModal(); };
+window.doAddSubject = function() {
+  const name=document.getElementById('addSubName')?.value||'';
+  if(!name.trim()){document.getElementById('addSubErr').style.display='block';document.getElementById('addSubErr').textContent='⚠️ Naam ज़रूरी है।';return;}
+  state.syllabus=[...state.syllabus,{id:`s_${Date.now()}`,subject:name.trim(),emoji:state._addSubEmoji||'📚',color:state._addSubColor||'#6366F1',days:[]}];
+  closeModal(); render();
+};
+window.addTopicField = function() {
+  state._addDayTopics=[...(state._addDayTopics||['']),'']; 
+  const T=getTheme();
+  document.getElementById('topicsContainer').innerHTML=renderTopicFields(T);
+};
+window.removeTopicField = function(i) {
+  state._addDayTopics=(state._addDayTopics||['']).filter((_,j)=>j!==i);
+  const T=getTheme();
+  document.getElementById('topicsContainer').innerHTML=renderTopicFields(T);
+};
+window.updateTopicField = function(i,v) {
+  if(!state._addDayTopics) state._addDayTopics=[''];
+  state._addDayTopics[i]=v;
+};
+window.doAddDay = function() {
+  const dayNum=parseInt(document.getElementById('addDayNum')?.value||1);
+  const topics=(state._addDayTopics||[]).filter(t=>t.trim());
+  const errEl=document.getElementById('addDayErr');
+  if(!topics.length){errEl.style.display='block';errEl.textContent='⚠️ कम से कम एक topic ज़रूरी है।';return;}
+  if(state.syllabus.flatMap(s=>s.days.map(d=>d.day)).includes(dayNum)){errEl.style.display='block';errEl.textContent=`⚠️ Day ${dayNum} already exists.`;return;}
+  const sid=state._addDaySubId;
+  state.syllabus=state.syllabus.map(s=>s.id===sid?{...s,days:[...s.days,{day:dayNum,topics}].sort((a,b)=>a.day-b.day)}:s);
+  state._addDayTopics=null;
+  closeModal(); render();
+};
+window.saveNotesModal = function(key) {
+  const text=document.getElementById('notesModalText')?.value||'';
+  state.dayContent={...state.dayContent,[key]:text};
+  closeModal(); render();
+};
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+function attachMainEvents() {
+  // Nothing extra needed — all handlers are on window.*
+}
+
+// Start the app
+render();
+</script>
+</body>
+</html>
